@@ -10,6 +10,9 @@ std::string to_upper(std::string& str){
 
 namespace psql{
 
+  template <typename Col_Map>
+  void create_table(std::string& model_name, Col_Map& fields, std::ofstream& Migrations){}
+
   template <typename IntType>
   void generate_int_sql(IntType& int_obj){
 		int_obj.datatype = to_upper(int_obj.datatype);

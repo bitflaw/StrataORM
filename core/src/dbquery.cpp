@@ -1,4 +1,6 @@
+#include "../includes/dbclient.hpp"
 #include "../includes/dbquery.hpp"
+#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <utility>

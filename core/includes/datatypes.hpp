@@ -16,6 +16,8 @@ public:
 	FieldAttr(std::string ct = "null",std::string dt = "null", bool nn = false, bool uq = false, bool pk = false)
 	: ctype(ct), datatype(dt), not_null(nn), unique(uq), primary_key(pk)
 	{}
+
+  ~FieldAttr() = default;
 };
 
 class IntegerField: public FieldAttr{
@@ -30,6 +32,8 @@ public:
  	{
     db_adapter::generate_int_sql(*this);
 	}
+
+  ~IntegerField() = default;
 };
 void to_json(nlohmann::json& j, const IntegerField& field);
 void from_json(const nlohmann::json& j, IntegerField& field);
@@ -44,6 +48,8 @@ public:
 	{
     db_adapter::generate_decimal_sql(*this);
 	}
+
+  ~DecimalField() = default;
 };
 void to_json(nlohmann::json& j, const DecimalField& field);
 void from_json(const nlohmann::json& j, DecimalField& field);
@@ -58,6 +64,8 @@ public:
 	{
     db_adapter::generate_char_sql(*this);
 	}
+
+  ~CharField() = default;
 };
 void to_json(nlohmann::json& j, const CharField& field);
 void from_json(const nlohmann::json& j, CharField& field);
@@ -71,6 +79,8 @@ public:
 	{
     db_adapter::generate_bool_sql(*this);
 	}
+
+  ~BoolField() = default;
 };
 void to_json(nlohmann::json& j, const BoolField& field);
 void from_json(const nlohmann::json& j, BoolField& field);
@@ -85,6 +95,8 @@ public:
 	{
     db_adapter::generate_bin_sql(*this);
 	}
+
+  ~BinaryField() = default;
 };
 void to_json(nlohmann::json& j, const BinaryField& field);
 void from_json(const nlohmann::json& j, BinaryField& field);
@@ -100,6 +112,8 @@ public:
 	{
     db_adapter::generate_datetime_sql(*this);
 	}
+
+  ~DateTimeField() = default;
 };
 void to_json(nlohmann::json& j, const DateTimeField& field);
 void from_json(const nlohmann::json& j, DateTimeField& field);
@@ -108,12 +122,15 @@ class ForeignKey : public FieldAttr{
 public:
   std::string col_name, model_name, ref_col_name, on_delete, on_update;
 
+  ForeignKey() = default;
 	ForeignKey(std::string cn,std::string mn="def", std::string rcn="def", std::string on_del="def", std::string on_upd="def")
 	:FieldAttr("null", "FOREIGN KEY", false, false, false),
   col_name(cn), model_name(mn), ref_col_name(cn), on_delete(on_del), on_update(on_upd)
 	{
     db_adapter::generate_foreignkey_sql(*this);
   }
+
+  ~ForeignKey() = default;
 };
 void to_json(nlohmann::json& j, const ForeignKey& field);
 void from_json(const nlohmann::json& j, ForeignKey& field);

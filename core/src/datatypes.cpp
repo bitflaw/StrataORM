@@ -1,13 +1,8 @@
 #include "../includes/datatypes.hpp"
-#include <ctype.h>
 #include <variant>
+#include "../includes/db_engine_adapters.hpp"
 
-std::string to_upper(std::string& str){
-  for(char& ch : str){
-    ch = toupper(ch);
-  }
-  return str;
-}
+namespace db_adapter = psql;
 
 template <typename T>
 bool try_set_variant(const nlohmann::json& j, DataTypeVariant& variant) {
@@ -39,7 +34,7 @@ void from_json(const nlohmann::json& j, IntegerField& field){
   field.primary_key = j.at("primary_key").get<bool>();
   field.check_constraint = j.at("check_constraint").get<int>();
   field.check_condition = j.at("check_condition").get<std::string>();
-  field.sql_generator();
+  db_adapter::generate_int_sql(field);
 }
 
 void to_json(nlohmann::json& j, const DecimalField& field){
@@ -56,7 +51,7 @@ void from_json(const nlohmann::json& j, DecimalField& field){
   field.primary_key = j.at("primary_key").get<bool>();
   field.max_length = j.at("max_length").get<int>();
   field.decimal_places = j.at("dec_places").get<int>();
-  field.sql_generator();
+  db_adapter::generate_decimal_sql(field);
 }
 
 void to_json(nlohmann::json& j, const CharField& field){
@@ -75,7 +70,7 @@ void from_json(const nlohmann::json& j, CharField& field){
   field.unique = j.at("unique").get<bool>();
   field.primary_key = j.at("primary_key").get<bool>();
   field.length = j.at("length").get<int>();
-  field.sql_generator();
+  db_adapter::generate_char_sql(field);
 }
 
 void to_json(nlohmann::json& j, const BoolField& field){
@@ -91,7 +86,7 @@ void from_json(const nlohmann::json& j, BoolField& field){
   field.not_null = j.at("not_null").get<bool>();
   field.enable_default = j.at("enable_def").get<bool>();
   field.default_value = j.at("default").get<bool>();
-  field.sql_generator();
+  db_adapter::generate_bool_sql(field);
 }
 
 void to_json(nlohmann::json& j, const BinaryField& field){
@@ -109,7 +104,7 @@ void from_json(const nlohmann::json& j, BinaryField& field){
   field.unique = j.at("unique").get<bool>();
   field.primary_key = j.at("primary_key").get<bool>();
   field.size = j.at("size").get<int>();
-  field.sql_generator();
+  db_adapter::generate_bin_sql(field);
 }
 
 void to_json(nlohmann::json& j, const DateTimeField& field){
@@ -126,13 +121,14 @@ void from_json(const nlohmann::json& j, DateTimeField& field){
   field.primary_key = j.at("primary_key").get<bool>();
   field.enable_default = j.at("enable_def").get<bool>();
   field.default_val = j.at("default_value").get<std::string>();
-  field.sql_generator();
+  db_adapter::generate_datetime_sql(field);
 }
 
 void to_json(nlohmann::json& j, const ForeignKey& field){
   j = nlohmann::json{
+    {"column_name", field.col_name},
     {"model_name", field.model_name},
-    {"column_name", field.column_name},
+    {"referenced_column_name", field.ref_col_name},
     {"on_delete", field.on_delete},
     {"on_update", field.on_update},
   };
@@ -140,10 +136,12 @@ void to_json(nlohmann::json& j, const ForeignKey& field){
 
 void from_json(const nlohmann::json& j, ForeignKey& field){
   field.datatype = "FOREIGN KEY";
+  field.col_name = j.at("column_name").get<std::string>();
   field.model_name = j.at("model_name").get<std::string>();
-  field.column_name = j.at("column_name").get<std::string>();
+  field.ref_col_name = j.at("referenced_column_name").get<std::string>();
   field.on_delete = j.at("on_delete").get<std::string>();
   field.on_update = j.at("on_update").get<std::string>(); 
+  db_adapter::generate_foreignkey_sql(field);
 }
 
 void variant_to_json(nlohmann::json& j, const DataTypeVariant& variant){

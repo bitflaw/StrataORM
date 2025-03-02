@@ -6,19 +6,22 @@
 #include <memory>
 #include "./datatypes.hpp"
 
-using ms_map = std::unordered_map<std::string, std::unordered_map<std::string, DataTypeVariant>>;
+using fields = std::unordered_map<std::string, DataTypeVariant>;
+using ms_map = std::unordered_map<std::string, fields>;
 
 class Model{
 public:
-  std::unordered_map<std::string, DataTypeVariant> fields;
+  fields col_map;
   ms_map init_ms;
   ms_map new_ms;
 
   Model(){
-    fields.clear();
+    col_map.clear();
   };
   void make_migrations();
   void track_changes();
+
+  ~Model() = default;
 };
 
 class ModelFactory{
