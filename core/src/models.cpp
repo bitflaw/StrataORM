@@ -196,7 +196,7 @@ std::vector<std::string> rename(m_rename_m& mrm, f_rename_m& frm, ms_map& init_m
       rename = "ALTER TABLE " + old_mn + " RENAME TO " + new_mn + ";\n";
       renames.push_back(rename);
     }else{
-      std::cerr<<"The model "<< old_mn <<" does not exist. Check for spelling mistakes in your model  rename map"<<std::endl;
+      std::cerr<<"The model "<< old_mn <<" does not exist. Check for spelling mistakes in your model rename map"<<std::endl;
     }
   }
 
@@ -276,11 +276,10 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
             alterations = col + " TYPE "+ col_obj.datatype;
             Migrations << "ALTER TABLE " + new_it->first + " ALTER COLUMN " + alterations + ";\n";
           }
-          /*if((init_field.check_condition != col_obj.check_condition) && col_obj.check_condition != "default"){
-                        string check = "CHECK(" + col + col_obj.check_condition + 
-                                        std::to_string(col_obj.check_constraint) + ")";
-                        Migrations << "ALTER TABLE " + new_it->first + " ALTER COLUMN " + alterations + ";\n";
-                    }*/
+        /*if((init_field.check_condition != col_obj.check_condition) && col_obj.check_condition != "default"){
+            string check = "CHECK(" + col + col_obj.check_condition + std::to_string(col_obj.check_constraint) + ")";
+            Migrations << "ALTER TABLE " + new_it->first + " ALTER COLUMN " + alterations + ";\n";
+          }*/
         },
         [&](auto& init_field){
           std::cerr<<"Conversions of from the defined type to IntegerField are not compatible."<<std::endl;
@@ -405,7 +404,7 @@ void Model::track_changes(){
   }
 
   for(auto& str : rename(mrm, frm, init_ms)) Migrations<< str;
-  for(auto& str : create_or_drop_tables(init_ms, new_ms)) Migrations<< str; 
+  for(auto& str : create_or_drop_tables(init_ms, new_ms)) Migrations<< str;
 
   std::vector<std::string> pk_cols;
   std::string alterations, pk, fk;
@@ -430,6 +429,7 @@ void Model::track_changes(){
           if(init_field.sql_segment != col_obj.sql_segment){
 
             handle_types(new_it, new_col, dtv_obj, init_col_map[new_col], Migrations);
+
             if(col_obj.primary_key){
               pk_cols.push_back(new_col);
             }
