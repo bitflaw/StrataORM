@@ -13,7 +13,7 @@ std::string to_upper(std::string& str){
 
 namespace psql{
 
-  void create_pk_constraint(std::string& model_name, std::vector<std::string>& pk_cols, std::ofstream& Migrations){
+  void create_pk_constraint(const std::string& model_name, const std::vector<std::string>& pk_cols, std::ofstream& Migrations){
     std::string pk_seg = "CONSTRAINT pk_" + model_name + " PRIMARY KEY (" + model_name + "_id)";
     if (!pk_cols.empty()) {
       pk_seg.replace(pk_seg.length() - 1, 1, ",");
@@ -26,30 +26,30 @@ namespace psql{
     return;
   }
 
-  void create_fk_constraint(std::string& model_name, std::string& fk_sql_segment,
-                            std::string& column_name, std::ofstream& Migrations){
+  void create_fk_constraint(const std::string& model_name, const std::string& fk_sql_segment,
+                            const std::string& column_name, std::ofstream& Migrations){
     Migrations<< "CONSTRAINT fk_" + model_name + " " + fk_sql_segment;
     return;
   }
 
-  void create_uq_constraint(std::string& uq_col, std::ofstream& Migrations){
+  void create_uq_constraint(const std::string& uq_col, std::ofstream& Migrations){
     Migrations<<"CONSTRAINT uq_" + uq_col + " UNIQUE (" + uq_col + "),";
     return;
   }
 
-  void create_column(std::string& column_name, std::string& column_sql_attributes, std::ofstream& Migrations){
+  void create_column(const std::string& column_name, const std::string& column_sql_attributes, std::ofstream& Migrations){
     Migrations<< column_name + " " + column_sql_attributes;
     return;
   }
 
   template <typename Col_Map>
-  void create_table(std::string& model_name, Col_Map& fields, std::ofstream& Migrations){
+  void create_table(const std::string& model_name, Col_Map& field_map, std::ofstream& Migrations){
     std::vector<std::string> primary_key_cols;
     std::vector<std::string> unique_constraint_cols;
 
     Migrations<< "CREATE TABLE " + model_name + " (" + model_name + "_id SERIAL NOT NULL, ";
 
-    for(auto& [col, dtv_obj] : fields){
+    for(auto& [col, dtv_obj] : field_map){
       std::visit([&](auto& col_obj){
         if constexpr(std::is_same_v<std::decay_t<decltype(col_obj)>, ForeignKey>){//TODO fk col type must be same as the pk it i
         //is referencing, so check accordingly, maybe check field map to find the specific pk column
@@ -73,35 +73,35 @@ namespace psql{
 
     for(std::string& col: unique_constraint_cols) create_uq_constraint(col, Migrations);
     create_pk_constraint(model_name, primary_key_cols, Migrations);
-    Migrations<< ")";
+    Migrations<< ");";
     return;
   }
 
-  void alter_rename_table(std::string& old_model_name, std::string& new_model_name, std::ofstream& Migrations){
+  void alter_rename_table(const std::string& old_model_name, const std::string& new_model_name, std::ofstream& Migrations){
     Migrations<< "ALTER TABLE " + old_model_name + " RENAME TO " + new_model_name + ";";
     return;
   }
 
-  void alter_add_column(std::string& model_name,std::string& column_name,
-                        std::string& column_sql_attributes, std::ofstream& Migrations){
+  void alter_add_column(const std::string& model_name, const std::string& column_name,
+                        const std::string& column_sql_attributes, std::ofstream& Migrations){
     Migrations<< "ALTER TABLE " + model_name + " ADD COLUMN " + column_name + " " + column_sql_attributes + ";";
     return;
   }
 
-  void alter_rename_column(std::string& model_name, std::string& old_column_name,
-                           std::string& new_column_name, std::ofstream& Migrations){
+  void alter_rename_column(const std::string& model_name, const std::string& old_column_name,
+                           const std::string& new_column_name, std::ofstream& Migrations){
     Migrations << "ALTER TABLE " + model_name + " RENAME COLUMN " + old_column_name + " TO " + new_column_name + ";";
     return;
   }
 
-  void alter_column_type(std::string& model_name, std::string& column_name,
-                         std::string& sql_segment, std::ofstream& Migrations){
+  void alter_column_type(const std::string& model_name, const std::string& column_name,
+                         const std::string& sql_segment, std::ofstream& Migrations){
     Migrations<< "ALTER TABLE " + model_name + " ALTER COLUMN " + column_name + " TYPE " + sql_segment + ";";
     return;
   }
 
-  void alter_column_defaultval(std::string& model_name, std::string& column_name,
-                               bool set_default, std::string& defaultval, std::ofstream& Migrations){
+  void alter_column_defaultval(const std::string& model_name, const std::string& column_name,
+                               const bool set_default, const std::string& defaultval, std::ofstream& Migrations){
     if(set_default){
       Migrations << "ALTER TABLE " + model_name + " ALTER COLUMN " + column_name + " SET DEFAULT " + defaultval + ";";
       return;
@@ -111,7 +111,7 @@ namespace psql{
     }
   }
 
-  void alter_column_nullable(std::string& model_name, std::string& column_name, bool nullable, std::ofstream& Migrations){
+  void alter_column_nullable(const std::string& model_name, const std::string& column_name, const bool nullable, std::ofstream& Migrations){
     if(nullable){
       Migrations<< "ALTER TABLE " + model_name + " ALTER COLUMN " + column_name + " DROP NOT NULL;";
       return;
@@ -124,17 +124,17 @@ namespace psql{
     }
   }
 
-  void drop_table(std::string& model_name, std::ofstream& Migrations){
+  void drop_table(const std::string& model_name, std::ofstream& Migrations){
     Migrations << "DROP TABLE " + model_name + ";";
     return;
   }
 
-  void drop_column(std::string& model_name, std::string& column_name,  std::ofstream& Migrations){
+  void drop_column(const std::string& model_name, const std::string& column_name,  std::ofstream& Migrations){
     Migrations << "ALTER TABLE " + model_name + " DROP COLUMN " + column_name + ";";
     return;
   }
 
-  void drop_constraint(std::string& model_name, std::string& constraint_name, std::ofstream& Migrations){
+  void drop_constraint(const std::string& model_name, const std::string& constraint_name, std::ofstream& Migrations){
     Migrations<< " ALTER TABLE " + model_name + " DROP CONSTRAINT " + constraint_name + ";";
     return;
   }

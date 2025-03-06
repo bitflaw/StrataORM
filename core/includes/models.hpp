@@ -18,8 +18,9 @@ public:
   Model(){
     col_map.clear();
   };
-  void make_migrations();
-  void track_changes();
+
+  void make_migrations(const nlohmann::json& mrm, const nlohmann::json& frm);
+  void track_changes(const nlohmann::json& mrm, const nlohmann::json& frm);
 
   ~Model() = default;
 };

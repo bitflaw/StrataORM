@@ -6,11 +6,6 @@
 #include <vector>
 #include <fstream>
 #include "../includes/models.hpp"
-#include "../includes/datatypes.hpp"
-#include "../../user/includes/renames.hpp"
-
-using f_rename_m = std::unordered_map<std::string, std::unordered_map<std::string, std::string>>;
-using m_rename_m = std::unordered_map<std::string, std::string>;
 
 template <typename... Ts>
 struct overloaded : Ts... { using Ts::operator()...; };
@@ -101,113 +96,37 @@ ms_map load_schema_ms(){
   return parse_to_obj(j);
 }
 
-void Model::make_migrations(){
+void Model::make_migrations(const nlohmann::json& mrm, const nlohmann::json& frm){
   for(const auto& pair : ModelFactory::registry()){
-    new_ms[pair.first] = ModelFactory::create_model_instance(pair.first)->fields;
+    new_ms[pair.first] = ModelFactory::create_model_instance(pair.first)->col_map;
   }
   if(!is_file_empty()){
     init_ms = load_schema_ms();
   }
   save_schema_ms(new_ms);
-  track_changes();
+  track_changes(mrm, frm);
   create_model_hpp(new_ms);
 }
 
-std::string sqlize_table(std::string model_name, std::unordered_map<std::string, DataTypeVariant>& fields){
-  std::vector<std::string> primary_key_cols;
-  std::vector<std::string> sql_strings;
+void rename(const nlohmann::json& mrm, const nlohmann::json& frm, ms_map& init_ms, std::ofstream& Migrations){
 
-  for(auto& [col, dtv_obj] : fields){
-    std::visit([&](auto& col_obj){
-      if constexpr(std::is_same_v<std::decay_t<decltype(col_obj)>, ForeignKey>){
-        std::string fk_sql_seg = col_obj.sql_generator(col);
-        //NOTE check the correct syntax and logic for foreign keys and whether they require columns
-        fk_sql_seg = "CONSTRAINT fk_" + model_name + "_" + col + " " + fk_sql_seg;
-        sql_strings.push_back(fk_sql_seg);
-        return;
-      }
-      if(col_obj.primary_key){
-        primary_key_cols.push_back(col);
-      }
-
-      if constexpr(std::is_same_v<std::decay_t<decltype(col_obj)>, IntegerField>){
-        if(col_obj.check_condition != "default"){
-          std::string cond = col_obj.check_condition;
-          std::string sql_seg;
-
-          /*if(cond == ">=")
-            sql_seg = "CHECK (" + col + ">=" + std::to_string(col_obj.check_constraint) + ")";
-          else if(cond == "<=")
-            sql_seg = "CHECK (" + col + "<=" + std::to_string(col_obj.check_constraint) + ")";
-          else if(cond == ">")
-            sql_seg = "CHECK (" + col + ">" + std::to_string(col_obj.check_constraint) + ")";
-          else if(cond == "<")
-            sql_seg = "CHECK (" + col + "<" + std::to_string(col_obj.check_constraint) + ")";
-          else if(cond == "!=")
-            sql_seg = "CHECK (" + col + "!=" + std::to_string(col_obj.check_constraint) + ")";
-          else if(cond == "=")
-            sql_seg = "CHECK (" + col + "=" + std::to_string(col_obj.check_constraint) + ")";
-          else
-            std::cerr << "No such check condition " << cond << " was found" << std::endl;*/
-
-          sql_strings.push_back(sql_seg);
-        }
-      }
-
-      std::string full_sql_segment = col + " " + col_obj.sql_segment;
-      sql_strings.push_back(full_sql_segment);
-
-      if(col_obj.unique){
-        std::string uq_constraint = "CONSTRAINT uq_" + col + " UNIQUE (" + col + ")";
-        sql_strings.push_back(uq_constraint);
-      }
-    }, dtv_obj);
-  }
-
-  std::string pk_def_col = model_name + "_id SERIAL NOT NULL";
-  sql_strings.push_back(pk_def_col);
-  std::string pk_seg = "CONSTRAINT pk_" + model_name + " PRIMARY KEY (" + model_name + "_id)";
-  if (!primary_key_cols.empty()) {
-    pk_seg.replace(pk_seg.length() - 1, 1, ",");
-    for(const auto& col : primary_key_cols) {
-      pk_seg += col + ",";
-    }
-    pk_seg.replace(pk_seg.length() - 1, 1, ")");
-  }
-  sql_strings.push_back(pk_seg);
-
-  std::string create_table_string = "CREATE TABLE " + model_name + " (";
-  for(const auto& sql_str : sql_strings){
-    create_table_string += sql_str + ",";
-  }
-  create_table_string.replace(create_table_string.length() - 1, 1, ");\n");
-
-  return create_table_string;
-}
-
-std::vector<std::string> rename(m_rename_m& mrm, f_rename_m& frm, ms_map& init_ms){
-  std::vector<std::string> renames;
-  std::string rename;
-
-  for(const auto& [old_mn, new_mn] : mrm){//rename operation for models using the model rename map(mrm)
+  for(const auto& [old_mn, new_mn] : mrm.items()){
     if(init_ms.find(old_mn) != init_ms.end()){
-      init_ms[new_mn] = init_ms[old_mn];
+      init_ms[new_mn.get<std::string>()] = init_ms[old_mn];
+      db_adapter::alter_rename_table(old_mn, new_mn.get<std::string>(), Migrations);
       init_ms.erase(old_mn);
-      rename = "ALTER TABLE " + old_mn + " RENAME TO " + new_mn + ";\n";
-      renames.push_back(rename);
     }else{
       std::cerr<<"The model "<< old_mn <<" does not exist. Check for spelling mistakes in your model rename map"<<std::endl;
     }
   }
 
-  for(auto& [new_mn, col_renames] : frm){
+  for(const auto& [new_mn, col_renames] : frm.items()){
     if(init_ms.find(new_mn) != init_ms.end()){
-      for(auto& [old_cn, new_cn] : col_renames){
+      for(const auto& [old_cn, new_cn] : col_renames.items()){
         if(init_ms[new_mn].find(old_cn) != init_ms[new_mn].end()){
-          init_ms[new_mn][new_cn] = init_ms[new_mn][old_cn];
+          init_ms[new_mn][new_cn.get<std::string>()] = init_ms[new_mn][old_cn];
+          db_adapter::alter_rename_column(new_mn, old_cn, new_cn.get<std::string>(), Migrations);
           init_ms[new_mn].erase(old_cn);
-          rename = "ALTER TABLE " + new_mn + " RENAME COLUMN " + old_cn + " TO " + new_cn + ";\n" ;
-          renames.push_back(rename);
         }else{
           std::cerr<<"Column name \""<< old_cn <<"\" passed into the column rename map."<<std::endl;
         }
@@ -216,22 +135,18 @@ std::vector<std::string> rename(m_rename_m& mrm, f_rename_m& frm, ms_map& init_m
       std::cerr<<"Invalid model name \""<< new_mn <<"\" in the column rename map. Check for spelling mistakes."<<std::endl;
     }
   }
-  return renames;
-} 
+}
 
-std::vector<std::string> create_or_drop_tables(ms_map& init_ms, ms_map& new_ms){
-  std::vector<std::string> db_mods;
-  std::string mods;
+void create_or_drop_tables(ms_map& init_ms, ms_map& new_ms, std::ofstream& Migrations){
   char choice = 'n';
 
-  for(const auto& [model, field_map] : init_ms){
+  for(auto& [model, field_map] : init_ms){
     if(new_ms.find(model) == new_ms.end()){
       std::cout<<"The model "<<model<< " will be dropped. Are u sure about this?"<<std::endl;
       std::cin >>choice;
       if(choice == 'y' || choice == 'Y'){
         std::cout<<"The model "<<model<<" will be dropped from the database."<<std::endl;
-        mods = "DROP TABLE " + model + ";\n";
-        db_mods.push_back(mods);
+        db_adapter::drop_table(model, Migrations);
         init_ms.erase(model);
       }
     }
@@ -239,33 +154,34 @@ std::vector<std::string> create_or_drop_tables(ms_map& init_ms, ms_map& new_ms){
 
   for(auto& [model, field_map] : new_ms){
     if(init_ms.find(model) == init_ms.end()){
-      std::string sql_create_table = sqlize_table(model, field_map);
-      db_mods.push_back(sql_create_table);
+      db_adapter::create_table(model, field_map, Migrations);
       new_ms.erase(model);
     }
   }
-
-  return db_mods;
 }
 
-void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVariant& dtv_obj, DataTypeVariant& init_dtv, std::ofstream& Migrations){
-  std::string alterations = "";
+void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVariant& dtv_obj, const nlohmann::json& mrm,
+                  const nlohmann::json& frm, DataTypeVariant& init_dtv, std::ofstream& Migrations){
+  std::string alterations;
+
   auto visitor = overloaded{
     [&](DateTimeField& col_obj){
       std::visit(overloaded{
         [&](DateTimeField& init_field){
           if(init_field.datatype != col_obj.datatype){
-            alterations = col + " TYPE " + col_obj.datatype;
-            Migrations << "ALTER TABLE " +  new_it->first + " ALTER COLUMN " + alterations + ";\n";
+            db_adapter::alter_column_type(new_it->first, col, col_obj.datatype, Migrations);
           }
           if((init_field.enable_default != col_obj.enable_default) && col_obj.enable_default){
-            alterations = col + " SET DEFAULT " + col_obj.default_val;
-            Migrations << "ALTER TABLE " +  new_it->first + " ALTER COLUMN " + alterations + ";\n";
+            db_adapter::alter_column_defaultval(new_it->first, col, true, col_obj.default_val, Migrations);
+          }else{
+            db_adapter::alter_column_defaultval(new_it->first, col, false, col_obj.default_val, Migrations);
           }
+          return;
         },
         [&](auto& init_field){
           std::cerr<<"Conversions of from the defined type to DateTimeField are not compatible."<<std::endl;
           //convert_to_DateTimeField(col_obj, init_field);
+          return;
         }
       }, init_dtv);
     },
@@ -273,35 +189,36 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
       std::visit(overloaded{
         [&](IntegerField& init_field){
           if(init_field.datatype != col_obj.datatype){
-            alterations = col + " TYPE "+ col_obj.datatype;
-            Migrations << "ALTER TABLE " + new_it->first + " ALTER COLUMN " + alterations + ";\n";
+            db_adapter::alter_column_type(new_it->first, col, col_obj.datatype, Migrations);
           }
         /*if((init_field.check_condition != col_obj.check_condition) && col_obj.check_condition != "default"){
             string check = "CHECK(" + col + col_obj.check_condition + std::to_string(col_obj.check_constraint) + ")";
             Migrations << "ALTER TABLE " + new_it->first + " ALTER COLUMN " + alterations + ";\n";
           }*/
+          return;
         },
         [&](auto& init_field){
           std::cerr<<"Conversions of from the defined type to IntegerField are not compatible."<<std::endl;
           //convert_to_IntegerField(col_obj, init_field);
+          return;
         }
       }, init_dtv);
     },
     [&](ForeignKey& col_obj){
       std::string constraint_name = "fk_";
-      for(auto& model_renames : model_renames){
-        if(model_renames.second == new_it->first){
-          constraint_name = constraint_name + model_renames.first;
+      for(auto& [old_mn, new_mn] : mrm.items()){
+        if(new_mn.get<std::string>() == new_it->first){
+          constraint_name = constraint_name + old_mn;
         }else{
           constraint_name = constraint_name + new_it->first;
         }
       }
-      for(auto& col_renames : column_renames){
+      for(auto& [model_name, col_renames]: frm.items()){
         std::string cr_first = constraint_name.substr(3, std::string::npos);
-        if(col_renames.first == cr_first){
-          for(auto& col_rns : col_renames.second){
-            if(col == col_rns.second){
-              constraint_name = constraint_name + "_" + col_rns.first;
+        if(model_name == cr_first){
+          for(auto& [old_cn, new_cn] : col_renames.items()){
+            if(col == new_cn.get<std::string>()){
+              constraint_name = constraint_name + "_" + old_cn;
             }else{
               constraint_name = constraint_name + "_" + col;
             }
@@ -311,30 +228,27 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
         }
       }
       //NOTE input some more logic here to handle if the maps are empty
-      Migrations << "ALTER TABLE " + new_it->first + " DROP CONSTRAINT " + constraint_name + ";\n" + 
-        "ALTER TABLE " + new_it->first + " ADD CONSTRAINT fk_" + new_it->first + "_" +
-        col + " (" + col_obj.sql_generator(col)  + ");\n";
+      db_adapter::drop_constraint(new_it->first, constraint_name, Migrations);
+      db_adapter::create_fk_constraint(new_it->first, col_obj.sql_segment, col, Migrations);
+      return;
     },
     [&](DecimalField& col_obj){
       std::visit(overloaded{
         [&](DecimalField& init_field){
-          if(init_field.datatype != col_obj.datatype){
-            alterations = col + " TYPE " + col_obj.datatype + "(" + 
-              std::to_string(col_obj.max_length) + std::to_string(col_obj.decimal_places) + ")";
-            Migrations << "ALTER TABLE " +  new_it->first + " ALTER COLUMN " + alterations + ";\n";
-          }
+          if(init_field.datatype != col_obj.datatype ||
+             init_field.max_length != col_obj.max_length ||
+             init_field.decimal_places != col_obj.decimal_places){
 
-          if(init_field.max_length != col_obj.max_length || init_field.decimal_places != col_obj.decimal_places){
-            alterations = col + " TYPE " + col_obj.datatype +"(" + 
-              std::to_string(col_obj.max_length) + std::to_string(col_obj.decimal_places) + ")";
-            Migrations << "ALTER TABLE " +  new_it->first + " ALTER COLUMN " + alterations + ";\n";
+            alterations = col_obj.datatype + " (" + std::to_string(col_obj.max_length) + "," + 
+                          std::to_string(col_obj.decimal_places) + ")";
+            db_adapter::alter_column_type(new_it->first, col, alterations, Migrations);
           }
+          return;
         },
         [&](auto& init_field){
           std::cerr<<"Conversions of from the defined type to DecimalField are not compatible."<<std::endl;
           //convert_to_DecField(col_obj, init_field, col, model_name);
-          //model_name and column name to check if the db table has data, and choose whether to convert if 
-          //it doesn't or does
+          return;
         }
       }, init_dtv);
     },
@@ -342,13 +256,15 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
       std::visit(overloaded{
         [&](CharField& init_field){
           if((init_field.datatype != col_obj.datatype) || (init_field.length != col_obj.length)){
-            alterations = col + " TYPE " + col_obj.datatype + "(" + std::to_string(col_obj.length) + ")";
-            Migrations << "ALTER TABLE " +  new_it->first + " ALTER COLUMN " + alterations + ";\n";
+            alterations = "VARCHAR( " + std::to_string(col_obj.length) + " )";
+            db_adapter::alter_column_type(new_it->first, col, alterations, Migrations);
           }
+          return;
         },
         [&](auto& init_field){
           std::cerr<<"Conversions of from the defined type to CharField are not compatible."<<std::endl;
           //convert_to_CharField(col_obj, init_field);
+          return;
         }
       }, init_dtv);
     },
@@ -356,13 +272,15 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
       std::visit(overloaded{
         [&](BinaryField& init_field){
           if(init_field.size != col_obj.size){
-            alterations = col + " TYPE BYTEA(" + std::to_string(col_obj.size) + ")";
-            Migrations << "ALTER TABLE " +  new_it->first + " ALTER COLUMN " + alterations + ";\n";
+            alterations = "BYTEA(" + std::to_string(col_obj.size) + ")";
+            db_adapter::alter_column_type(new_it->first, col, alterations, Migrations);
           }
+          return;
         },
         [&](auto& init_field){
           std::cerr<<"Conversions of from the defined type to BinaryField are not compatible."<<std::endl;
           //convert_to_BinaryField(col_obj, init_field)
+          return;
         }
       }, init_dtv);
     },
@@ -371,17 +289,18 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
         [&](BoolField& init_field){
           if(init_field.enable_default != col_obj.enable_default){
             if(col_obj.enable_default){
-              alterations = col + " SET DEFAULT TRUE";
-              Migrations << "ALTER TABLE " +  new_it->first + " ALTER COLUMN " + alterations + ";\n";
+              db_adapter::alter_column_defaultval(new_it->first, col, true, std::to_string(col_obj.default_value), Migrations);
             }else{
               alterations = col + " DROP DEFAULT";
-              Migrations << "ALTER TABLE " +  new_it->first + " ALTER COLUMN " + alterations + ";\n";
+              db_adapter::alter_column_defaultval(new_it->first, col, false, "false", Migrations);
             }
           }
+          return;
         },
         [&](auto& init_field){
           std::cerr<<"Conversions from your datatype to BoolField are not compatible."<<std::endl;
           //convert_to_BoolField(col_obj itself, and the init_field for conversion compatibility checks);
+          return;
         }
       }, init_dtv);
     }
@@ -389,24 +308,20 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
   std::visit(visitor, dtv_obj);
 }
 
-void Model::track_changes(){
-  //TODO a replace the rename maps with json objects which are more lightweight
-  m_rename_m mrm = model_renames;
-  f_rename_m frm = column_renames;
+void Model::track_changes(const nlohmann::json& mrm, const nlohmann::json& frm){
 
   std::ofstream Migrations ("migrations.sql");
   if(init_ms.empty()){
     for(auto& [model_name, field_map] : new_ms){
-      std::string sql_table_string = sqlize_table(model_name, field_map);
-      Migrations << sql_table_string;
+      db_adapter::create_table(model_name, field_map, Migrations);
     }
     return;
   }
 
-  for(auto& str : rename(mrm, frm, init_ms)) Migrations<< str;
-  for(auto& str : create_or_drop_tables(init_ms, new_ms)) Migrations<< str;
+  rename(mrm, frm, init_ms, Migrations);
+  create_or_drop_tables(init_ms, new_ms, Migrations);
 
-  std::vector<std::string> pk_cols;
+  std::vector<std::string> pk_cols, uq_cols;
   std::string alterations, pk, fk;
 
   for(auto& [init_model_name, init_col_map]:init_ms){
@@ -418,17 +333,12 @@ void Model::track_changes(){
     for(auto& [new_col, dtv_obj] : new_it->second){
       std::visit([&](auto& col_obj){
         if(init_col_map.find(new_col) == init_col_map.end()){
-          Migrations << "ALTER TABLE " + new_it->first + " ADD " + new_col + " " + col_obj.sql_segment + ";\n";
+          db_adapter::alter_add_column(new_it->first, new_col, col_obj.sql_segment, Migrations);
           return;
         }
         std::visit([&](auto& init_field){
-          if constexpr(std::is_same_v<std::decay_t<decltype(col_obj)>, ForeignKey>){
-            col_obj.sql_generator(new_col);
-          }
-
           if(init_field.sql_segment != col_obj.sql_segment){
-
-            handle_types(new_it, new_col, dtv_obj, init_col_map[new_col], Migrations);
+            handle_types(new_it, new_col, dtv_obj, mrm, frm, init_col_map[new_col], Migrations);
 
             if(col_obj.primary_key){
               pk_cols.push_back(new_col);
@@ -436,20 +346,19 @@ void Model::track_changes(){
 
             if(init_field.not_null != col_obj.not_null){
               if(col_obj.not_null){
-                alterations = new_col + " SET NOT NULL";
-                Migrations << "ALTER TABLE " +  new_it->first + " ALTER COLUMN " + alterations + ";\n";
+                db_adapter::alter_column_nullable(new_it->first, new_col, false, Migrations);
               }else{
-                Migrations << "ALTER TABLE " +  new_it->first + " ALTER COLUMN " + new_col + " DROP NOT NULL;\n";
+                db_adapter::alter_column_nullable(new_it->first, new_col, true, Migrations);
               }
             }
 
             if(init_field.unique != col_obj.unique){
               if(col_obj.unique){
                 std::string constraint_name = "uq";
-                for(auto& [m_nms, col_map] : frm){
+                for(auto& [m_nms, col_map] : frm.items()){
                   if(m_nms == new_it->first){
-                    for(auto& [old_cn, new_cn] : col_map){
-                      if(new_col == new_cn){
+                    for(auto& [old_cn, new_cn] : col_map.items()){
+                      if(new_col == new_cn.get<std::string>()){
                         constraint_name = constraint_name + "_" + old_cn;
                       }else{
                         constraint_name = constraint_name + "_" + new_col;
@@ -459,18 +368,20 @@ void Model::track_changes(){
                     constraint_name = constraint_name + "_" + new_col;
                   }
                 }
+
                 if(frm.empty()){
                   Migrations << "ALTER TABLE " + new_it->first + " ADD CONSTRAINT uq_" + new_col + " UNIQUE(" + new_col + ");\n";
                 }else{
                   Migrations << "ALTER TABLE " + new_it->first + " ADD CONSTRAINT uq_" + new_col + " UNIQUE(" + new_col + ");\n";
                 }
 
+                uq_cols.push_back(new_col);
               }else{
                 std::string constraint_name = "uq";
-                for(auto& [m_nms, col_map] : frm){
+                for(auto& [m_nms, col_map] : frm.items()){
                   if(m_nms == new_it->first){
-                    for(auto& [old_cn, new_cn] : col_map){
-                      if(new_col == new_cn){
+                    for(auto& [old_cn, new_cn] : col_map.items()){
+                      if(new_col == new_cn.get<std::string>()){
                         constraint_name = constraint_name + "_" + old_cn;
                       }else{
                         constraint_name = constraint_name + "_" + new_col;
@@ -482,8 +393,10 @@ void Model::track_changes(){
                 }
                 if(frm.empty()){
                   Migrations << "ALTER TABLE " + new_it->first + " DROP CONSTRAINT uq_" + new_col + ";\n";
+                  db_adapter::drop_constraint(new_it->first, "uq_"+new_col , Migrations);
                 }else{
                   Migrations << "ALTER TABLE " + new_it->first + " DROP CONSTRAINT " + constraint_name + ";\n";
+                  db_adapter::drop_constraint(new_it->first, constraint_name, Migrations);
                 }
               }
             }
@@ -491,25 +404,24 @@ void Model::track_changes(){
         }, init_col_map[std::string(new_col)]);
       }, dtv_obj);
 
+      for(const std::string& uq_col : uq_cols) db_adapter::create_uq_constraint(uq_col, Migrations);
+
       if(!mrm.empty()){
         std::string pk_constraint = "pk_";
-        for(auto& [old_mn, new_mn] : mrm){
-          if(new_mn == new_it->first){
+        for(auto& [old_mn, new_mn] : mrm.items()){
+          if(new_mn.get<std::string>() == new_it->first){
             pk_constraint += old_mn;
           }else{
             pk_constraint += new_it->first;
           }
         }
-        Migrations << "ALTER TABLE " + new_it->first + " DROP CONSTRAINT " + pk_constraint + ";\n";
+        db_adapter::drop_constraint(new_it->first, pk_constraint, Migrations);
+      }else{
+        db_adapter::drop_constraint(new_it->first, "pk_" + new_it->first , Migrations);
       }
 
-      if(pk_cols.size() != 0){
-        std::string pk_seg = "pk_" + new_it->first + " PRIMARY KEY (" + new_it->first + "_id,";
-        for(auto& col : pk_cols)pk_seg += col + ",";
-        pk_seg.replace(pk_seg.length()-1, 1, ")");
-
-        Migrations << "ALTER TABLE " + new_it->first + " ADD CONSTRAINT " + pk_seg + ";\n";
-      }
+      db_adapter::create_pk_constraint(new_it->first, pk_cols, Migrations);
+      return;
     }
   }
 
@@ -523,10 +435,10 @@ void Model::track_changes(){
       return;
     }
     for(auto& [old_col, dtv_obj] : init_it->second){
-      std::cout<<"Col in init_ms is: "<<old_col<<"in model: "<< init_it->first<<std::endl;
+      std::cout<<"Col in init_ms is: "<<old_col<<" in model: "<< init_it->first<<std::endl;
       if(new_col_map.find(old_col) == new_col_map.end()){
         std::cout<<"Dropping col: "<<old_col<<std::endl;
-        Migrations << "ALTER TABLE " + new_model_name + " DROP " + old_col + ";\n";
+        db_adapter::drop_column(new_model_name, old_col, Migrations);
       }
     }
   }
