@@ -4,10 +4,6 @@
 #include "json.hpp"
 #include "./db_engine_adapters.hpp"
 
-namespace db_adapter = psql;
-
-std::string to_upper(std::string& str);
-
 class FieldAttr{
 public:
 	std::string ctype, datatype, sql_segment;
@@ -120,13 +116,15 @@ void from_json(const nlohmann::json& j, DateTimeField& field);
 
 class ForeignKey : public FieldAttr{
 public:
-  std::string col_name, model_name, ref_col_name, on_delete, on_update;
+  std::string col_name, sql_type, model_name, ref_col_name, on_delete, on_update;
 
   ForeignKey() = default;
-	ForeignKey(std::string cn,std::string mn="def", std::string rcn="def", std::string on_del="def", std::string on_upd="def")
+	ForeignKey(std::string cn, FieldAttr& pk_col_obj, std::string mn, std::string rcn, std::string on_del="def", std::string on_upd="def")
 	:FieldAttr("null", "FOREIGN KEY", false, false, false),
-  col_name(cn), model_name(mn), ref_col_name(cn), on_delete(on_del), on_update(on_upd)
+  col_name(cn), model_name(mn), ref_col_name(rcn), on_delete(on_del), on_update(on_upd)
 	{
+    ctype = pk_col_obj.ctype;
+    sql_type = pk_col_obj.sql_segment;
     db_adapter::generate_foreignkey_sql(*this);
   }
 

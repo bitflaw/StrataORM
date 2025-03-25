@@ -1,10 +1,18 @@
 #pragma once
-#include <cstddef>
 #include <vector>
 #include <string>
 #include <fstream>
+#include "./db_config.hpp"
 
-std::string to_upper(std::string& str);
+typedef struct{
+  std::string db_name;
+  std::string user;
+  std::string passwd;
+  std::string host;
+  int port;
+} db_params;
+
+db_params parse_db_conn_params();
 
 namespace psql{
 
@@ -63,4 +71,40 @@ namespace psql{
   template <typename FKType>
   void generate_foreignkey_sql(FKType& fk_obj);
 
+  #ifdef PSQL
+
+  template<typename Model_T>
+  void dbfetch(Model_T& obj, std::string& sql_string, bool getfn_called = false);
+
+  namespace query{
+
+    template <typename Model_T>
+    void fetch_all(Model_T& obj);
+
+    template <typename Model_T, typename... Args>
+    void get(Model_T& obj, Args... args);
+
+    template <typename Model_T, typename... Args>
+    void filter(Model_T& obj, Args... args);
+
+    template <typename Model_T, typename... Args>
+    void select_related(Model_T& obj, Args... args);
+
+    template <typename Model_T>
+    std::vector<Model_T> to_instances(Model_T& obj);
+
+    template <typename Model_T>
+    std::vector<decltype(std::declval<Model_T>().get_attr())> to_values(Model_T& obj);
+
+  }
+
+  void execute_sql(std::string& file_name);
+
+  #endif
 }
+
+#ifdef PSQL
+  namespace db_adapter = psql;
+#else
+  #error "No valid db_engine specified"
+#endif

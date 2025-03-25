@@ -1,14 +1,38 @@
+#include <cctype>
 #include <iostream>
-#include <vector>
+#include <sstream>
+#include <stdexcept>
 #include <variant>
 #include "../includes/datatypes.hpp"
 #include "../includes/db_engine_adapters.hpp"
 
-std::string to_upper(std::string& str){
-  for(char& ch : str){
-    ch = toupper(ch);
+#ifdef PSQL
+  #include <pqxx/pqxx>
+#else
+  #error "No other thing is defined"
+#endif
+
+std::string str_to_upper(std::string& str){
+  for(char& ch: str){
+    ch = std::toupper(ch);
   }
   return str;
+}
+
+db_params parse_db_conn_params(){
+  std::ifstream dbconfigfile ("config.json");
+
+  if(!dbconfigfile.is_open()) throw std::runtime_error("Could not load schema from file.");
+
+  nlohmann::json j;
+  dbconfigfile >> j;
+
+  return db_params { j.at("db_name").get<std::string>(),
+                     j.at("user").get<std::string>(),
+                     j.at("passwd").get<std::string>(),
+                     j.at("host").get<std::string>(),
+                     j.at("port").get<int>()
+                   };
 }
 
 namespace psql{
@@ -51,11 +75,10 @@ namespace psql{
 
     for(auto& [col, dtv_obj] : field_map){
       std::visit([&](auto& col_obj){
-        if constexpr(std::is_same_v<std::decay_t<decltype(col_obj)>, ForeignKey>){//TODO fk col type must be same as the pk it i
-        //is referencing, so check accordingly, maybe check field map to find the specific pk column
-          //create_column(col_obj.referenced_column, Migrations);
-          //Migrations << ",";
-          create_fk_constraint(model_name, col, Migrations);
+        if constexpr(std::is_same_v<std::decay_t<decltype(col_obj)>, ForeignKey>){
+          create_column(col_obj.column_name,col_obj.sql_type, Migrations);
+          Migrations << ",";
+          create_fk_constraint(model_name, col_obj.sql_segment, col_obj.column_name, Migrations);
           return;
         }
         if(col_obj.primary_key){
@@ -141,7 +164,7 @@ namespace psql{
 
   template <typename IntType>
   void generate_int_sql(IntType& int_obj){
-	  int_obj.datatype = to_upper(int_obj.datatype);
+	  int_obj.datatype = str_to_upper(int_obj.datatype);
 		if(int_obj.datatype != "INT" && int_obj.datatype != "SMALLINT" && int_obj.datatype != "BIGINT"){
 			std::cerr<< "Datatype " <<int_obj.datatype<<" is not supported by postgreSQL. Provide a valid datatype"<<std::endl;
 			return;
@@ -152,7 +175,7 @@ namespace psql{
 
   template <typename CharType>
   void generate_char_sql(CharType& char_obj){
-    char_obj.datatype = to_upper(char_obj.datatype);
+    char_obj.datatype = str_to_upper(char_obj.datatype);
     if(char_obj.datatype != "VARCHAR" && char_obj.datatype != "CHAR" && char_obj.datatype != "TEXT"){
       std::cerr<< "Datatype " <<char_obj.datatype<<" is not supported by postgreSQL. Provide a valid datatype"<<std::endl;
       return;
@@ -168,7 +191,7 @@ namespace psql{
 
   template <typename DecimalType>
   void generate_decimal_sql(DecimalType& dec_obj){
-    dec_obj.datatype = to_upper(dec_obj.datatype);
+    dec_obj.datatype = str_to_upper(dec_obj.datatype);
     if(dec_obj.datatype != "DECIMAL" && dec_obj.datatype != "REAL"&& 
         dec_obj.datatype != "DOUBLE PRECISION" && dec_obj.datatype != "NUMERIC"){
       std::cerr<< "Datatype" <<dec_obj.datatype<<"is not supported by postgreSQL. Provide a valid datatype"<<std::endl;
@@ -203,35 +226,307 @@ namespace psql{
 
   template <typename DTType>
   void generate_datetime_sql(DTType& dt_obj){
-    dt_obj.datatype = to_upper(dt_obj.datatype);
+    dt_obj.datatype = str_to_upper(dt_obj.datatype);
 		if(dt_obj.datatype != "DATE" && dt_obj.datatype != "TIME" && dt_obj.datatype != "TIMESTAMP_WTZ" &&
        dt_obj.datatype != "TIMESTAMP" && dt_obj.datatype != "TIME_WTZ"  && dt_obj.datatype != "INTERVAL"){
 			std::cerr<<"Datatype " <<dt_obj.datatype<< "not supported in postgreSQL. Provide a valid datatype"<<std::endl;
 			return;
 		}
 
+    std::string::size_type n = dt_obj.datatype.find('_');
+    if(n != std::string::npos){
+      dt_obj.datatype.replace(n+1, n+3, "WITH TIMEZONE");
+    }
+
 		dt_obj.sql_segment = dt_obj.datatype;
 		if(dt_obj.enable_default && dt_obj.default_val != "default"){
-			dt_obj.default_val = to_upper(dt_obj.default_val);
+			dt_obj.default_val = str_to_upper(dt_obj.default_val);
 			dt_obj.sql_segment += " DEFAULT " + dt_obj.default_val;
 		}
   }
 
   template <typename FKType>
   void generate_foreignkey_sql(FKType& fk_obj){
-    if(fk_obj.model_name == "def" || fk_obj.ref_col_name == "def"){
-      std::cerr<< "Please provide the reference model name and column name for the column "<< fk_obj.col_name << std::endl;
-		}
-	  fk_obj.sql_segment ="FOREIGN KEY(" + fk_obj.col_name + ") REFERENCES " + fk_obj.model_name + " (" + fk_obj.ref_col_name + ")";
+    fk_obj.sql_segment ="FOREIGN KEY(" + fk_obj.col_name + ") REFERENCES " + fk_obj.model_name + " (" + fk_obj.ref_col_name + ")";
 
 		if(fk_obj.on_delete != "def"){
-			fk_obj.on_delete = to_upper(fk_obj.on_delete);
+			fk_obj.on_delete = str_to_upper(fk_obj.on_delete);
       fk_obj.sql_segment += " ON DELETE " + fk_obj.on_delete;
     }
 		if(fk_obj.on_update != "def" ){
-      fk_obj.on_update = to_upper(fk_obj.on_update);
+      fk_obj.on_update = str_to_upper(fk_obj.on_update);
       fk_obj.sql_segment += " ON UPDATE " + fk_obj.on_update;
 	  }
   }
 
+  #ifdef PSQL
+
+  template<typename Model_T>
+  void dbfetch(Model_T& obj, std::string& sql_string, bool getfn_called){
+    db_params params = parse_db_conn_params();
+    try{
+      pqxx::connection cxn("dbname=" + params.db_name+
+                           " user=" + params.user +
+                           " password=" + params.passwd +
+                           " host=" + params.host +
+                           " port=" + std::to_string(params.port)
+                           );
+      pqxx::work txn(cxn);
+
+      if(getfn_called){
+        obj.records.push_back(txn.exec1(sql_string));
+        return;
+      }
+
+      for(const pqxx::row& row : txn.exec(sql_string)){
+        obj.records.push_back(row);
+      }
+
+      txn.commit();
+    }catch (const std::exception& e){
+      throw std::runtime_error(e.what());
+    }
+    return;
+  }
+
+  template <typename Arg>
+  std::string to_str(const Arg& arg){
+    std::ostringstream ss;
+    ss<<arg;
+    return  ss.str();
+  }
+
+  template <typename... Args>
+  std::vector<std::string> make_arg_vec(Args&&... args){
+    return {to_str(args)...};
+  }
+
+  namespace query{
+
+    template <typename Model_T>
+    void fetch_all(Model_T& obj, std::string& model_name){
+      std::string sql_string = "select * from " + model_name + ";";
+      dbfetch(obj, sql_string);
+    }
+
+    template <typename Model_T, typename... Args>
+    void get(Model_T& obj, std::string& model_name, Args... args){
+      if(sizeof...(args) == 0 || sizeof...(args)%2 != 0){
+        throw std::runtime_error("Args are provided in key-value pairs. Please check if you have missed either a key or a value!");
+      }else{
+        std::string sql_kwargs;
+        std::vector<std::string>args = make_arg_vec(std::forward<Args>(args)...);
+        std::vector<std::pair<std::string, std::string>> kwargs;
+        for(int i = 0; i < args.size(); i+=2){
+          sql_kwargs += args[i] + "=" + args[i+1] + " and ";
+          kwargs.push_back(std::make_pair(args[i], args[i+1]));
+        }
+
+        sql_kwargs.replace(sql_kwargs.size()-5, 5, ";");
+
+        if(obj.records.empty()){
+          std::string sql_str = "select * from " + model_name + "where " + sql_kwargs;
+          dbfetch(obj, sql_str, true);
+          return;
+        }else{
+          std::vector<pqxx::row> filtered_rows;
+          for(const pqxx::row& row : obj.records){
+            bool accept_row = true;
+            for(const auto& kwarg : kwargs){
+              if(row[kwarg.first].template as<std::string>() != kwarg.second){
+                accept_row = false;
+                break;
+              }
+            }
+            if(accept_row){
+              filtered_rows.push_back(row);
+              continue;
+            }
+          }
+          obj.records = filtered_rows;
+          return;
+        }
+      }
+    }
+
+    template <typename Model_T, typename... Args>
+    void filter(Model_T& obj, std::string& model_name, Args... args){
+      if(sizeof...(args) == 0){
+        throw std::runtime_error("Filter parameters are required for the .filter() function.");
+      }else{
+        std::vector<std::string>args = make_arg_vec(std::forward<Args>(args)...);
+        std::vector<std::pair<std::string, std::pair<std::string, std::string>>> kwargs;
+
+        for(int i = 0; i < args.size(); i+=2){
+          std::string::size_type n = args[i].find("__");
+          if(std::string::npos != n){
+            kwargs.push_back(std::make_pair(args[i].substr(n+2), std::make_pair(args[i].substr(0, n-1), args[i+1])));
+          }else{
+            throw std::runtime_error("A filter constraint is required in the form \'__constraint\' after the column name you want to filter.");
+          }
+        }
+
+        if(obj.records.empty()){
+          std::string sql_str = "select * from " + model_name + " where ";
+
+          for(const auto& pair: kwargs){
+            if(pair.first == "startswith"){
+              sql_str += pair.second.first + " like '" + pair.second.second + "%' and ";
+            }else if(pair.first == "endswith"){
+              sql_str += pair.second.first + " like '%" + pair.second.second + "' and ";
+            }else if(pair.first == "gte"){
+              sql_str += pair.second.first + " >= " + pair.second.second + " and ";
+            }else if(pair.first == "lte"){
+              sql_str += pair.second.first + " <= " + pair.second.second + "' and ";
+            }else if(pair.first == "gt"){
+              sql_str += pair.second.first + " > " + pair.second.second + "' and ";
+            }else if(pair.first == "lt"){
+              sql_str += pair.second.first + " < " + pair.second.second + "' and ";
+            }else if(pair.first == "contains"){
+              sql_str += pair.second.first + " like '" + pair.second.second + "%' and ";
+            }else if(pair.first == "betweenNAN"){
+              sql_str += pair.second.first + " between '" + pair.second.second + "' and ";
+            }else if(pair.first == "betweenN"){
+              sql_str += pair.second.first + " between " + pair.second.second + " and ";
+            }else if(pair.first == "eql"){
+              sql_str += pair.second.first + " = " + pair.second.second + " and ";
+            }else{
+              throw std::runtime_error("The constraint specified is not implemented yet or is not correct.");
+            }
+          }
+          sql_str.replace(sql_str.size()-5, 5, ";");
+          dbfetch(obj, sql_str);
+          return;
+        }else{
+          std::vector<pqxx::row> filtered;
+          for(const pqxx::row& row : obj.records){
+            bool accept_row = false;
+            for(const auto& pair : kwargs){
+              if(pair.first == "startswith"){
+                std::string pattern = row[pair.second.first].template as<std::string>().substr(pair.second.second.size()-1);
+                if(pattern != pair.second.second){
+                  accept_row = false;
+                  break;
+                }
+              }else if(pair.first == "endswith"){
+                int start_pos = row[pair.second.first].size();
+                std::string pattern = row[pair.second.first].template as<std::string>().substr(start_pos - pair.second.second.size());
+                if(pattern != pair.second.second){
+                  accept_row = false;
+                  break;
+                }
+              }else if(pair.first == "gte"){
+                float col_value = row[pair.second.first].template as<float>();
+                if(col_value < std::stof(pair.second.second)){
+                  accept_row = false;
+                  return;
+                }
+              }else if(pair.first == "lte"){
+                float col_value = row[pair.second.first].template as<float>();
+                if(col_value > std::stof(pair.second.second)){
+                  accept_row = false;
+                  return;
+                }
+              }else if(pair.first == "gt"){
+                float col_value = row[pair.second.first].template as<float>();
+                if(col_value < std::stof(pair.second.second)){
+                  accept_row = false;
+                  return;
+                }
+              }else if(pair.first == "lt"){
+                float col_value = row[pair.second.first].template as<float>();
+                if(col_value > std::stof(pair.second.second)){
+                  accept_row = false;
+                  return;
+                }
+              }else if(pair.first == "contains"){
+                size_t index_for_substr = row[pair.second.first].template as<std::string>().find(pair.second.second);
+                if(index_for_substr == std::string::npos){
+                  accept_row = false;
+                  break;
+                }
+              }else if(pair.first == "eql"){
+                if(row[pair.second.first].template as<std::string>() != pair.second.second){
+                  accept_row = false;
+                  return;
+                }
+              }else{
+                throw std::runtime_error("The constraint specified is not implemented yet or is not correct.");
+              }
+            }
+
+            if(accept_row){
+              filtered.push_back(row);
+              continue;
+            }
+          }
+          obj.records = filtered;
+          return;
+        }
+      }
+    }
+
+    //template <typename Model_T, typename... Args>
+    //  void select_related(Model_T& obj, Args... args){}//NOTE to be implemented later, soln not found yet
+
+    template <typename Model_T>
+    std::vector<Model_T> to_instances(Model_T& obj){
+      using tuple_T = decltype(obj.get_attr());
+      std::vector<Model_T> instances;
+
+      for(const pqxx::row& row : obj.records){
+        instances.push_back(Model_T(row.template as_tuple<tuple_T>()));
+      }
+
+      return instances;
+    }
+
+    template <typename Model_T>
+    std::vector<decltype(std::declval<Model_T>().get_attr())> to_values(Model_T& obj){
+      using tuple_T = decltype(obj.get_attr());
+      std::vector<tuple_T> values;
+
+      for(const pqxx::row& row : obj.records){
+        values.push_back(row.template as_tuple<tuple_T>());
+      }
+
+      return values;
+    }
+  }
+
+  void execute_sql(std::string& file_name){
+    std::ifstream sql_file(file_name);
+
+    std::ostringstream raw_sql;
+    raw_sql << sql_file.rdbuf();
+
+    db_params params = parse_db_conn_params();
+    try{
+      pqxx::connection cxn("dbname=" + params.db_name+
+                           " user=" + params.user +
+                           " password=" + params.passwd +
+                           " host=" + params.host +
+                           " port=" + std::to_string(params.port)
+                           );
+      pqxx::work txn(cxn);
+
+      std::cout<<"If you would like to view the sql changes, view them in the " + file_name + " file in the file tree. DO NOT CLOSE THIS!\n"
+               <<"To continue, enter (y)es to execute the sql, else, enter (n)o to abort the sql execution. :"<<std::endl;
+
+      char choice = 'y';
+      std::cin >> choice;
+
+      if(choice == 'n'){
+        return;
+      }
+
+      txn.exec0(raw_sql.str());
+
+      txn.commit();
+    }catch (const std::exception& e){
+      throw std::runtime_error(e.what());
+    }
+    return;
+  }
+  #endif
 }

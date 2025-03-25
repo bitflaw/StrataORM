@@ -2,8 +2,6 @@
 #include <variant>
 #include "../includes/db_engine_adapters.hpp"
 
-namespace db_adapter = psql;
-
 template <typename T>
 bool try_set_variant(const nlohmann::json& j, DataTypeVariant& variant) {
   try {
