@@ -15,7 +15,6 @@ endif()
 
 file(WRITE ${CMAKE_SOURCE_DIR}/core/includes/db_config.hpp "${DB_DEFN}\n")
 
-
 file(GLOB CORE_SOURCES core/src/*.cpp)
 include_directories(core/includes)
 add_library(orm++ SHARED ${CORE_SOURCES})
