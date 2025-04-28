@@ -1,8 +1,9 @@
 #pragma once
+#include <memory>
+#include <optional>
 #include <string>
 #include <variant>
 #include "json.hpp"
-#include "./db_engine_adapters.hpp"
 
 class FieldAttr{
 public:
@@ -22,12 +23,8 @@ public:
 	int check_constraint;
 
   IntegerField() = default;
-	IntegerField(std::string datatype, bool pk = false, bool not_null = false,
-               bool unique = false, int check_constr = 0, std::string check_cond = "default")
-    :FieldAttr("int", datatype, not_null, unique, pk), check_constraint(check_constr), check_condition(check_cond)
- 	{
-    db_adapter::generate_int_sql(*this);
-	}
+	IntegerField(std::string datatype, bool pk = false, bool not_null = false, bool unique = false,
+              int check_constr = 0, std::string check_cond = "default");
 
   ~IntegerField() = default;
 };
@@ -39,11 +36,7 @@ public:
 	int max_length, decimal_places;
 
   DecimalField() = default;
-	DecimalField(std::string datatype, int max_length, int decimal_places, bool pk = false)
-    :FieldAttr("float", datatype, false, false, pk), max_length(max_length), decimal_places(decimal_places)
-	{
-    db_adapter::generate_decimal_sql(*this);
-	}
+	DecimalField(std::string datatype, int max_length, int decimal_places, bool pk = false);
 
   ~DecimalField() = default;
 };
@@ -55,11 +48,7 @@ public:
 	int length;
 
   CharField() = default;
-	CharField(std::string datatype, int length = 0, bool not_null = false, bool unique = false, bool pk = false)
-    :FieldAttr("std::string", datatype, not_null, unique, pk), length(length)
-	{
-    db_adapter::generate_char_sql(*this);
-	}
+	CharField(std::string datatype, int length = 0, bool not_null = false, bool unique = false, bool pk = false);
 
   ~CharField() = default;
 };
@@ -70,11 +59,7 @@ class BoolField:public FieldAttr{
 public:
 	bool enable_default, default_value;
 
-	BoolField(bool not_null = false, bool enable_default = false, bool default_value = false)
-	:FieldAttr("bool", "BOOLEAN", not_null, false, false), enable_default(enable_default), default_value(default_value)
-	{
-    db_adapter::generate_bool_sql(*this);
-	}
+	BoolField(bool not_null = false, bool enable_default = false, bool default_value = false);
 
   ~BoolField() = default;
 };
@@ -86,11 +71,7 @@ public:
 	int size;
 
   BinaryField() = default;
-	BinaryField(int size, bool not_null = false, bool unique = false, bool pk = false)
-  :FieldAttr("int", "BYTEA", not_null, unique, pk),size(size)
-	{
-    db_adapter::generate_bin_sql(*this);
-	}
+	BinaryField(int size, bool not_null = false, bool unique = false, bool pk = false);
 
   ~BinaryField() = default;
 };
@@ -103,11 +84,7 @@ public:
 	std::string default_val;
 
   DateTimeField() = default;
-	DateTimeField(std::string datatype, bool enable_default = false, std::string default_val = "default", bool pk = false)
-  :FieldAttr("std::string",datatype, false, false, pk), enable_default(enable_default), default_val(default_val)
-	{
-    db_adapter::generate_datetime_sql(*this);
-	}
+	DateTimeField(std::string datatype, bool enable_default = false, std::string default_val = "default", bool pk = false);
 
   ~DateTimeField() = default;
 };
@@ -119,21 +96,18 @@ public:
   std::string col_name, sql_type, model_name, ref_col_name, on_delete, on_update;
 
   ForeignKey() = default;
-	ForeignKey(std::string cn, FieldAttr& pk_col_obj, std::string mn, std::string rcn, std::string on_del="def", std::string on_upd="def")
-	:FieldAttr("null", "FOREIGN KEY", false, false, false),
-  col_name(cn), model_name(mn), ref_col_name(rcn), on_delete(on_del), on_update(on_upd)
-	{
-    ctype = pk_col_obj.ctype;
-    sql_type = pk_col_obj.sql_segment;
-    db_adapter::generate_foreignkey_sql(*this);
-  }
+	ForeignKey(std::string cn, std::string mn, std::string rcn, std::optional<FieldAttr> pk_col_obj=std::nullopt,
+             std::string on_del="def", std::string on_upd="def");
 
   ~ForeignKey() = default;
 };
 void to_json(nlohmann::json& j, const ForeignKey& field);
 void from_json(const nlohmann::json& j, ForeignKey& field);
 
-using DataTypeVariant = std::variant<IntegerField, CharField, BoolField, BinaryField, DateTimeField, ForeignKey, DecimalField>;
+using DataTypeVariant = std::variant<std::shared_ptr<IntegerField>,std::shared_ptr<CharField>, std::shared_ptr<BoolField>,
+                                     std::shared_ptr<BinaryField>, std::shared_ptr<DateTimeField>, std::shared_ptr<ForeignKey>,
+                                     std::shared_ptr<DecimalField>
+                                    >;
 
 void variant_to_json(nlohmann::json& j, const DataTypeVariant& variant);
 void variant_from_json(const nlohmann::json& j, DataTypeVariant& variant);

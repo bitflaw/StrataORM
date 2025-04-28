@@ -13,9 +13,10 @@ else()
   message(FATAL_ERROR "Unsupported database engine chosen")
 endif()
 
-file(WRITE ${CMAKE_SOURCE_DIR}/core/includes/db_config.hpp "${DB_DEFN}\n")
+file(WRITE ${CMAKE_SOURCE_DIR}/orm++/db_config.hpp "${DB_DEFN}\n")
 
-file(GLOB CORE_SOURCES core/src/*.cpp)
-include_directories(core/includes)
+#Builds only shared rn.
+file(GLOB CORE_SOURCES src/*.cpp)
+include_directories(orm++)
 add_library(orm++ SHARED ${CORE_SOURCES})
-target_include_directories(orm++ PUBLIC core/includes)
+target_include_directories(orm++ PUBLIC orm++/)

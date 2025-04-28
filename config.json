@@ -1,0 +1,18 @@
+\\NOTE: remove this before parsing or use(build time)
+This shows an example of a config file that provides the details needed for the database connection
+as well as the engine to be used. This is needed at build time(See CMakeLists.txt file) so it is best
+u have a database ready by then. To change the engine or database name, u have to rebuild the library again.
+Bummer...will be resolved tho.
+
+This does not support databases over networks yet.
+
+END OF NOTE//
+
+{
+  "db_engine": "psql",
+  "db_name": "testdb",
+  "user": "root",
+  "password": "root",
+  "host": "localhost",
+  "port": 5432
+}

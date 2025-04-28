@@ -1,11 +1,13 @@
 #include <iostream>
+#include <memory>
+#include <stdexcept>
 #include <string>
 #include <cstdlib>
-#include <type_traits>
 #include <variant>
 #include <vector>
 #include <fstream>
-#include "../includes/models.hpp"
+#include "../orm++/models.hpp"
+#include "../orm++/db_engine_adapters.hpp"
 
 template <typename... Ts>
 struct overloaded : Ts... { using Ts::operator()...; };
@@ -14,27 +16,26 @@ template<typename... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
 void create_model_hpp(const ms_map& migrations){
-  std::ofstream models_hpp("model.hpp");
+  std::ofstream models_hpp("models.hpp");
   std::string cols_str;
+
   models_hpp<<"#include <string>\n#include <vector>\n"
-            << "#include <pqxx/row>\n\n";
+            <<"#include <pqxx/row>\n\n";
+
+  if(migrations.empty()) std::cout<<"The migrations map at the fn create_model_hpp is empty"<<std::endl;
 
   for(const auto& [model_name, col_map] : migrations){
     models_hpp<< "class " + model_name + "{\npublic:\n";
+    cols_str = "";
     for(const auto& [col_name, dtv_obj] : col_map){
       cols_str += col_name + ",";
       std::visit([&](auto& col_obj){
-//TODO rn, foreign key is hardcoded with int datatype, add more for multiple cols, and also some support for easy access
-        if constexpr(std::is_same_v<std::decay_t<decltype(col_obj)>, ForeignKey>){
-          models_hpp<<"  int " + col_name + ";\n";
-          return;
-        }
-        models_hpp<< "  " + col_obj.ctype + " " + col_name + ";\n";
+        models_hpp<< "  " + col_obj->ctype + " " + col_name + ";\n";
       }, dtv_obj);
     }
     cols_str.pop_back();
     models_hpp<< "  std::vector<pqxx::row> records;\n"
-              << "  std::string col_str = " + cols_str + ";\n\n"
+              << "  std::string col_str = \"" + cols_str + "\";\n\n"
               << "  " + model_name + "() = default;\n"
               << "  template <typename... Args>\n"
               << "  " + model_name + "(Args&&... args){\n"
@@ -44,19 +45,10 @@ void create_model_hpp(const ms_map& migrations){
   }
 }
 
-bool is_file_empty(){
-  bool is_empty = true;
-  if(std::filesystem::exists("schema.json")){
-    if(std::filesystem::file_size("schema.json") != 0){
-      is_empty = false;
-    }
-  }
-  return is_empty;
-}
-
 nlohmann::json jsonify(const ms_map& schema){
   nlohmann::json j;
   nlohmann::json j_col;
+
   for(const auto& [mn, fields] : schema){
     nlohmann::json field_json;
     for(const auto& [col, col_obj] : fields){
@@ -65,6 +57,7 @@ nlohmann::json jsonify(const ms_map& schema){
     }
     j[mn] = field_json;
   }
+
   return j;
 }
 
@@ -72,6 +65,7 @@ ms_map parse_to_obj(nlohmann::json& j){
   ms_map parsed;
   std::unordered_map<std::string, DataTypeVariant> fields;
   DataTypeVariant variant;
+
   for(const auto& [model, j_field_map] : j.items()){
     for(const auto& [col, json_dtv] : j_field_map.items()){
       variant_from_json(json_dtv, variant);
@@ -79,6 +73,7 @@ ms_map parse_to_obj(nlohmann::json& j){
     }
     parsed[model] = fields;
   }
+
   return parsed;
 }
 
@@ -100,7 +95,7 @@ void Model::make_migrations(const nlohmann::json& mrm, const nlohmann::json& frm
   for(const auto& pair : ModelFactory::registry()){
     new_ms[pair.first] = ModelFactory::create_model_instance(pair.first)->col_map;
   }
-  if(!is_file_empty()){
+  if(std::filesystem::exists("schema.json") && std::filesystem::file_size("schema.json") > 0){
     init_ms = load_schema_ms();
   }
   save_schema_ms(new_ms);
@@ -140,23 +135,29 @@ void rename(const nlohmann::json& mrm, const nlohmann::json& frm, ms_map& init_m
 void create_or_drop_tables(ms_map& init_ms, ms_map& new_ms, std::ofstream& Migrations){
   char choice = 'n';
 
-  for(auto& [model, field_map] : init_ms){
+  for(auto it = init_ms.begin(); it != init_ms.end();){
+    const auto& [model, field_map] = *it;
     if(new_ms.find(model) == new_ms.end()){
-      std::cout<<"The model "<<model<< " will be dropped. Are u sure about this?"<<std::endl;
+      std::cout<<"The model "<<model<< " will be dropped. Are u sure about this?(y or n)"<<std::endl;
       std::cin >>choice;
       if(choice == 'y' || choice == 'Y'){
         std::cout<<"The model "<<model<<" will be dropped from the database."<<std::endl;
         db_adapter::drop_table(model, Migrations);
-        init_ms.erase(model);
+        it = init_ms.erase(it);
+        continue;
       }
     }
+    ++it;
   }
 
-  for(auto& [model, field_map] : new_ms){
+  for(auto it = new_ms.begin(); it != new_ms.end();){
+    const auto& [model, field_map] = *it;
     if(init_ms.find(model) == init_ms.end()){
       db_adapter::create_table(model, field_map, Migrations);
-      new_ms.erase(model);
+      it = new_ms.erase(it);
+      continue;
     }
+    ++it;
   }
 }
 
@@ -165,16 +166,16 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
   std::string alterations;
 
   auto visitor = overloaded{
-    [&](DateTimeField& col_obj){
+    [&](std::shared_ptr<DateTimeField>& col_obj){
       std::visit(overloaded{
-        [&](DateTimeField& init_field){
-          if(init_field.datatype != col_obj.datatype){
-            db_adapter::alter_column_type(new_it->first, col, col_obj.datatype, Migrations);
+        [&](std::shared_ptr<DateTimeField>& init_field){
+          if(init_field->datatype != col_obj->datatype){
+            db_adapter::alter_column_type(new_it->first, col, col_obj->datatype, Migrations);
           }
-          if((init_field.enable_default != col_obj.enable_default) && col_obj.enable_default){
-            db_adapter::alter_column_defaultval(new_it->first, col, true, col_obj.default_val, Migrations);
+          if((init_field->enable_default != col_obj->enable_default) && col_obj->enable_default){
+            db_adapter::alter_column_defaultval(new_it->first, col, true, col_obj->default_val, Migrations);
           }else{
-            db_adapter::alter_column_defaultval(new_it->first, col, false, col_obj.default_val, Migrations);
+            db_adapter::alter_column_defaultval(new_it->first, col, false, col_obj->default_val, Migrations);
           }
           return;
         },
@@ -185,11 +186,11 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
         }
       }, init_dtv);
     },
-    [&](IntegerField& col_obj){
+    [&](std::shared_ptr<IntegerField>& col_obj){
       std::visit(overloaded{
-        [&](IntegerField& init_field){
-          if(init_field.datatype != col_obj.datatype){
-            db_adapter::alter_column_type(new_it->first, col, col_obj.datatype, Migrations);
+        [&](std::shared_ptr<IntegerField>& init_field){
+          if(init_field->datatype != col_obj->datatype){
+            db_adapter::alter_column_type(new_it->first, col, col_obj->datatype, Migrations);
           }
         /*if((init_field.check_condition != col_obj.check_condition) && col_obj.check_condition != "default"){
             string check = "CHECK(" + col + col_obj.check_condition + std::to_string(col_obj.check_constraint) + ")";
@@ -204,7 +205,7 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
         }
       }, init_dtv);
     },
-    [&](ForeignKey& col_obj){
+    [&](std::shared_ptr<ForeignKey>& col_obj){
       std::string constraint_name = "fk_";
       for(auto& [old_mn, new_mn] : mrm.items()){
         if(new_mn.get<std::string>() == new_it->first){
@@ -227,20 +228,19 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
           constraint_name = constraint_name + "_" + col;
         }
       }
-      //NOTE input some more logic here to handle if the maps are empty
       db_adapter::drop_constraint(new_it->first, constraint_name, Migrations);
-      db_adapter::create_fk_constraint(new_it->first, col_obj.sql_segment, col, Migrations);
+      Migrations<<"ALTER TABLE " + new_it->first + " ";
+      db_adapter::create_fk_constraint(new_it->first, col_obj->sql_segment, col, Migrations);
       return;
     },
-    [&](DecimalField& col_obj){
+    [&](std::shared_ptr<DecimalField>& col_obj){
       std::visit(overloaded{
-        [&](DecimalField& init_field){
-          if(init_field.datatype != col_obj.datatype ||
-             init_field.max_length != col_obj.max_length ||
-             init_field.decimal_places != col_obj.decimal_places){
+        [&](std::shared_ptr<DecimalField>& init_field){
+          if(init_field->datatype != col_obj->datatype ||
+             init_field->max_length != col_obj->max_length ||
+             init_field->decimal_places != col_obj->decimal_places){
 
-            alterations = col_obj.datatype + " (" + std::to_string(col_obj.max_length) + "," + 
-                          std::to_string(col_obj.decimal_places) + ")";
+            alterations = col_obj->datatype + " (" + std::to_string(col_obj->max_length) + "," + std::to_string(col_obj->decimal_places) + ")";
             db_adapter::alter_column_type(new_it->first, col, alterations, Migrations);
           }
           return;
@@ -252,11 +252,11 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
         }
       }, init_dtv);
     },
-    [&](CharField& col_obj){
+    [&](std::shared_ptr<CharField>& col_obj){
       std::visit(overloaded{
-        [&](CharField& init_field){
-          if((init_field.datatype != col_obj.datatype) || (init_field.length != col_obj.length)){
-            alterations = "VARCHAR( " + std::to_string(col_obj.length) + " )";
+        [&](std::shared_ptr<CharField>& init_field){
+          if((init_field->datatype != col_obj->datatype) || (init_field->length != col_obj->length)){
+            alterations = "VARCHAR( " + std::to_string(col_obj->length) + " )";
             db_adapter::alter_column_type(new_it->first, col, alterations, Migrations);
           }
           return;
@@ -268,11 +268,11 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
         }
       }, init_dtv);
     },
-    [&](BinaryField& col_obj){
+    [&](std::shared_ptr<BinaryField>& col_obj){
       std::visit(overloaded{
-        [&](BinaryField& init_field){
-          if(init_field.size != col_obj.size){
-            alterations = "BYTEA(" + std::to_string(col_obj.size) + ")";
+        [&](std::shared_ptr<BinaryField>& init_field){
+          if(init_field->size != col_obj->size){
+            alterations = "BYTEA(" + std::to_string(col_obj->size) + ")";
             db_adapter::alter_column_type(new_it->first, col, alterations, Migrations);
           }
           return;
@@ -284,12 +284,12 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
         }
       }, init_dtv);
     },
-    [&](BoolField& col_obj){
+    [&](std::shared_ptr<BoolField>& col_obj){
       std::visit(overloaded{
-        [&](BoolField& init_field){
-          if(init_field.enable_default != col_obj.enable_default){
-            if(col_obj.enable_default){
-              db_adapter::alter_column_defaultval(new_it->first, col, true, std::to_string(col_obj.default_value), Migrations);
+        [&](std::shared_ptr<BoolField>& init_field){
+          if(init_field->enable_default != col_obj->enable_default){
+            if(col_obj->enable_default){
+              db_adapter::alter_column_defaultval(new_it->first, col, true, std::to_string(col_obj->default_value), Migrations);
             }else{
               alterations = col + " DROP DEFAULT";
               db_adapter::alter_column_defaultval(new_it->first, col, false, "false", Migrations);
@@ -311,6 +311,7 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
 void Model::track_changes(const nlohmann::json& mrm, const nlohmann::json& frm){
 
   std::ofstream Migrations ("migrations.sql");
+
   if(init_ms.empty()){
     for(auto& [model_name, field_map] : new_ms){
       db_adapter::create_table(model_name, field_map, Migrations);
@@ -333,27 +334,27 @@ void Model::track_changes(const nlohmann::json& mrm, const nlohmann::json& frm){
     for(auto& [new_col, dtv_obj] : new_it->second){
       std::visit([&](auto& col_obj){
         if(init_col_map.find(new_col) == init_col_map.end()){
-          db_adapter::alter_add_column(new_it->first, new_col, col_obj.sql_segment, Migrations);
+          db_adapter::alter_add_column(new_it->first, new_col, col_obj->sql_segment, Migrations);
           return;
         }
         std::visit([&](auto& init_field){
-          if(init_field.sql_segment != col_obj.sql_segment){
+          if(init_field->sql_segment != col_obj->sql_segment){
             handle_types(new_it, new_col, dtv_obj, mrm, frm, init_col_map[new_col], Migrations);
 
-            if(col_obj.primary_key){
+            if(col_obj->primary_key){
               pk_cols.push_back(new_col);
             }
 
-            if(init_field.not_null != col_obj.not_null){
-              if(col_obj.not_null){
+            if(init_field->not_null != col_obj->not_null){
+              if(col_obj->not_null){
                 db_adapter::alter_column_nullable(new_it->first, new_col, false, Migrations);
               }else{
                 db_adapter::alter_column_nullable(new_it->first, new_col, true, Migrations);
               }
             }
 
-            if(init_field.unique != col_obj.unique){
-              if(col_obj.unique){
+            if(init_field->unique != col_obj->unique){
+              if(col_obj->unique){
                 std::string constraint_name = "uq";
                 for(auto& [m_nms, col_map] : frm.items()){
                   if(m_nms == new_it->first){
@@ -392,10 +393,8 @@ void Model::track_changes(const nlohmann::json& mrm, const nlohmann::json& frm){
                   }
                 }
                 if(frm.empty()){
-                  Migrations << "ALTER TABLE " + new_it->first + " DROP CONSTRAINT uq_" + new_col + ";\n";
                   db_adapter::drop_constraint(new_it->first, "uq_"+new_col , Migrations);
                 }else{
-                  Migrations << "ALTER TABLE " + new_it->first + " DROP CONSTRAINT " + constraint_name + ";\n";
                   db_adapter::drop_constraint(new_it->first, constraint_name, Migrations);
                 }
               }
@@ -404,7 +403,10 @@ void Model::track_changes(const nlohmann::json& mrm, const nlohmann::json& frm){
         }, init_col_map[std::string(new_col)]);
       }, dtv_obj);
 
-      for(const std::string& uq_col : uq_cols) db_adapter::create_uq_constraint(uq_col, Migrations);
+      for(const std::string& uq_col : uq_cols){
+        Migrations<<"ALTER TABLE " + new_it->first + " ";
+        db_adapter::create_uq_constraint(uq_col, Migrations);
+      }
 
       if(!mrm.empty()){
         std::string pk_constraint = "pk_";
@@ -420,7 +422,10 @@ void Model::track_changes(const nlohmann::json& mrm, const nlohmann::json& frm){
         db_adapter::drop_constraint(new_it->first, "pk_" + new_it->first , Migrations);
       }
 
+      Migrations<<"ALTER TABLE " + new_it->first + " ";
       db_adapter::create_pk_constraint(new_it->first, pk_cols, Migrations);
+      Migrations<<";\n";
+
       return;
     }
   }
@@ -431,8 +436,7 @@ void Model::track_changes(const nlohmann::json& mrm, const nlohmann::json& frm){
   for(const auto& [new_model_name, new_col_map]:new_ms){
     const auto init_it = init_ms.find(new_model_name);
     if(init_it == init_ms.end()){
-      std::cerr<<"Something went wrong in the check for the init iterator."<<std::endl;
-      return;
+      throw std::runtime_error("Something went wrong in the check for the init iterator.");
     }
     for(auto& [old_col, dtv_obj] : init_it->second){
       std::cout<<"Col in init_ms is: "<<old_col<<" in model: "<< init_it->first<<std::endl;
