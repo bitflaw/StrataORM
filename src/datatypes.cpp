@@ -1,6 +1,6 @@
 #include <stdexcept>
 #include <variant>
-#include "../orm++/db_engine_adapters.hpp"
+#include "../orm++/db_adapters.hpp"
 
 IntegerField::IntegerField(std::string datatype, bool pk, bool not_null, bool unique, int check_constr, std::string check_cond)
 :FieldAttr("int", datatype, not_null, unique, pk), check_constraint(check_constr), check_condition(check_cond)
@@ -99,8 +99,8 @@ void from_json(const nlohmann::json& j, BoolField& field){
   db_adapter::generate_bool_sql(field);
 }
 
-BinaryField::BinaryField(int size, bool not_null, bool unique, bool pk)
-:FieldAttr("int", "BYTEA", not_null, unique, pk),size(size)
+BinaryField::BinaryField(bool not_null, bool unique, bool pk)
+:FieldAttr("int", "BYTEA", not_null, unique, pk)
 {
   db_adapter::generate_bin_sql(*this);
 }
@@ -110,7 +110,6 @@ void to_json(nlohmann::json& j, const BinaryField& field){
     {"not_null", field.not_null},
     {"unique", field.unique},
     {"primary_key", field.primary_key},
-    {"size", field.size}
   };
 }
 
@@ -119,7 +118,6 @@ void from_json(const nlohmann::json& j, BinaryField& field){
   field.not_null = j.at("not_null").get<bool>();
   field.unique = j.at("unique").get<bool>();
   field.primary_key = j.at("primary_key").get<bool>();
-  field.size = j.at("size").get<int>();
   db_adapter::generate_bin_sql(field);
 }
 

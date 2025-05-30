@@ -68,10 +68,8 @@ void from_json(const nlohmann::json& j, BoolField& field);
 
 class BinaryField: public FieldAttr{
 public:
-	int size;
-
   BinaryField() = default;
-	BinaryField(int size, bool not_null = false, bool unique = false, bool pk = false);
+	BinaryField(bool not_null, bool unique = false, bool pk = false);
 
   ~BinaryField() = default;
 };

@@ -2,48 +2,17 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <cstdlib>
 #include <variant>
 #include <vector>
 #include <fstream>
 #include "../orm++/models.hpp"
-#include "../orm++/db_engine_adapters.hpp"
+#include "../orm++/db_adapters.hpp"
 
 template <typename... Ts>
 struct overloaded : Ts... { using Ts::operator()...; };
 
 template<typename... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
-
-void create_model_hpp(const ms_map& migrations){
-  std::ofstream models_hpp("models.hpp");
-  std::string cols_str;
-
-  models_hpp<<"#include <string>\n#include <vector>\n"
-            <<"#include <pqxx/row>\n\n";
-
-  if(migrations.empty()) std::cout<<"The migrations map at the fn create_model_hpp is empty"<<std::endl;
-
-  for(const auto& [model_name, col_map] : migrations){
-    models_hpp<< "class " + model_name + "{\npublic:\n";
-    cols_str = "";
-    for(const auto& [col_name, dtv_obj] : col_map){
-      cols_str += col_name + ",";
-      std::visit([&](auto& col_obj){
-        models_hpp<< "  " + col_obj->ctype + " " + col_name + ";\n";
-      }, dtv_obj);
-    }
-    cols_str.pop_back();
-    models_hpp<< "  std::vector<pqxx::row> records;\n"
-              << "  std::string col_str = \"" + cols_str + "\";\n\n"
-              << "  " + model_name + "() = default;\n"
-              << "  template <typename... Args>\n"
-              << "  " + model_name + "(Args&&... args){\n"
-              << "    std::tie(" + cols_str + ") = std::forward_as_tuple(std::forward<Args>(args)...);\n  }\n\n"
-              << "  auto get_attr() const{\n"
-              << "    return std::make_tuple(" + cols_str + ");\n  }\n};\n\n";
-  }
-}
 
 nlohmann::json jsonify(const ms_map& schema){
   nlohmann::json j;
@@ -72,6 +41,7 @@ ms_map parse_to_obj(nlohmann::json& j){
       fields[col] = variant;
     }
     parsed[model] = fields;
+    fields.clear();
   }
 
   return parsed;
@@ -79,19 +49,19 @@ ms_map parse_to_obj(nlohmann::json& j){
 
 void save_schema_ms(const ms_map& schema){
   std::ofstream schema_ms_file("schema.json");
-  if(!schema_ms_file.is_open()) throw std::runtime_error("Could not write schema into file.");
-  schema_ms_file << jsonify(schema).dump(4);
+  if(!schema_ms_file.is_open()) throw std::runtime_error("[ERROR: from 'save_schema_ms()'] => Could not write schema into file.");
+  schema_ms_file << jsonify(schema).dump(2);
 }
 
 ms_map load_schema_ms(){
   std::ifstream schema_ms_file("schema.json");
-  if(!schema_ms_file.is_open()) throw std::runtime_error("Could not load schema from file.");
+  if(!schema_ms_file.is_open()) throw std::runtime_error("[ERROR: from 'load_schema_ms()'] => Could not load schema from file.");
   nlohmann::json j;
   schema_ms_file >> j;
   return parse_to_obj(j);
 }
 
-void Model::make_migrations(const nlohmann::json& mrm, const nlohmann::json& frm){
+void Model::make_migrations(const nlohmann::json& mrm, const nlohmann::json& frm, std::string& sql_filename){
   for(const auto& pair : ModelFactory::registry()){
     new_ms[pair.first] = ModelFactory::create_model_instance(pair.first)->col_map;
   }
@@ -99,8 +69,8 @@ void Model::make_migrations(const nlohmann::json& mrm, const nlohmann::json& frm
     init_ms = load_schema_ms();
   }
   save_schema_ms(new_ms);
-  track_changes(mrm, frm);
-  create_model_hpp(new_ms);
+  track_changes(mrm, frm, sql_filename);
+  db_adapter::create_models_hpp(new_ms);
 }
 
 void rename(const nlohmann::json& mrm, const nlohmann::json& frm, ms_map& init_ms, std::ofstream& Migrations){
@@ -111,7 +81,9 @@ void rename(const nlohmann::json& mrm, const nlohmann::json& frm, ms_map& init_m
       db_adapter::alter_rename_table(old_mn, new_mn.get<std::string>(), Migrations);
       init_ms.erase(old_mn);
     }else{
-      std::cerr<<"The model "<< old_mn <<" does not exist. Check for spelling mistakes in your model rename map"<<std::endl;
+      throw std::runtime_error(R"([ERROR: from 'rename()' inside model renames]=>
+                                Invalid model name passed into the model rename map.
+                                Check for spelling mistakes)");
     }
   }
 
@@ -123,11 +95,15 @@ void rename(const nlohmann::json& mrm, const nlohmann::json& frm, ms_map& init_m
           db_adapter::alter_rename_column(new_mn, old_cn, new_cn.get<std::string>(), Migrations);
           init_ms[new_mn].erase(old_cn);
         }else{
-          std::cerr<<"Column name \""<< old_cn <<"\" passed into the column rename map."<<std::endl;
+          throw std::runtime_error(R"([ERROR: from 'rename()' in column renames]=>
+                                    The (old)column you passed in to the frm doesn't exist in the migrations.
+                                    Check for spelling mistakes.)");
         }
       }
     }else{
-      std::cerr<<"Invalid model name \""<< new_mn <<"\" in the column rename map. Check for spelling mistakes."<<std::endl;
+      throw std::runtime_error(R"([ERROR: from 'rename()' inside column renames]=>
+                                Invalid model name passed into the field rename map.
+                                Check for spelling mistakes)");
     }
   }
 }
@@ -138,7 +114,7 @@ void create_or_drop_tables(ms_map& init_ms, ms_map& new_ms, std::ofstream& Migra
   for(auto it = init_ms.begin(); it != init_ms.end();){
     const auto& [model, field_map] = *it;
     if(new_ms.find(model) == new_ms.end()){
-      std::cout<<"The model "<<model<< " will be dropped. Are u sure about this?(y or n)"<<std::endl;
+      std::cout<<"The model "<<model<< " will be dropped. Are you sure about this?(y or n)"<<std::endl;
       std::cin >>choice;
       if(choice == 'y' || choice == 'Y'){
         std::cout<<"The model "<<model<<" will be dropped from the database."<<std::endl;
@@ -180,7 +156,8 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
           return;
         },
         [&](auto& init_field){
-          std::cerr<<"Conversions of from the defined type to DateTimeField are not compatible."<<std::endl;
+          std::runtime_error(R"([ERROR: in 'handle_types.DateTimeField lambda()'] => 
+                             Conversions of from the defined type to DateTimeField are not compatible.)");
           //convert_to_DateTimeField(col_obj, init_field);
           return;
         }
@@ -199,7 +176,8 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
           return;
         },
         [&](auto& init_field){
-          std::cerr<<"Conversions of from the defined type to IntegerField are not compatible."<<std::endl;
+          std::runtime_error(R"([ERROR: in 'handle_types.IntegerField lambda()'] => 
+                             Conversions of from the defined type to IntegerField are not compatible.)");
           //convert_to_IntegerField(col_obj, init_field);
           return;
         }
@@ -207,16 +185,8 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
     },
     [&](std::shared_ptr<ForeignKey>& col_obj){
       std::string constraint_name = "fk_";
-      for(auto& [old_mn, new_mn] : mrm.items()){
-        if(new_mn.get<std::string>() == new_it->first){
-          constraint_name = constraint_name + old_mn;
-        }else{
-          constraint_name = constraint_name + new_it->first;
-        }
-      }
       for(auto& [model_name, col_renames]: frm.items()){
-        std::string cr_first = constraint_name.substr(3, std::string::npos);
-        if(model_name == cr_first){
+        if(model_name == new_it->first){
           for(auto& [old_cn, new_cn] : col_renames.items()){
             if(col == new_cn.get<std::string>()){
               constraint_name = constraint_name + "_" + old_cn;
@@ -229,7 +199,7 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
         }
       }
       db_adapter::drop_constraint(new_it->first, constraint_name, Migrations);
-      Migrations<<"ALTER TABLE " + new_it->first + " ";
+      Migrations<<"ALTER TABLE " + new_it->first + " ADD ";
       db_adapter::create_fk_constraint(new_it->first, col_obj->sql_segment, col, Migrations);
       return;
     },
@@ -246,7 +216,8 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
           return;
         },
         [&](auto& init_field){
-          std::cerr<<"Conversions of from the defined type to DecimalField are not compatible."<<std::endl;
+          std::runtime_error(R"([ERROR: in 'handle_types.DecimalField lambda()'] => 
+                             Conversions of from the defined type to DecimalField are not compatible.)");
           //convert_to_DecField(col_obj, init_field, col, model_name);
           return;
         }
@@ -262,7 +233,8 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
           return;
         },
         [&](auto& init_field){
-          std::cerr<<"Conversions of from the defined type to CharField are not compatible."<<std::endl;
+          std::runtime_error(R"([ERROR: in 'handle_types.CharField lambda()'] => 
+                             Conversions of from the defined type to CharField are not compatible.)");
           //convert_to_CharField(col_obj, init_field);
           return;
         }
@@ -271,14 +243,11 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
     [&](std::shared_ptr<BinaryField>& col_obj){
       std::visit(overloaded{
         [&](std::shared_ptr<BinaryField>& init_field){
-          if(init_field->size != col_obj->size){
-            alterations = "BYTEA(" + std::to_string(col_obj->size) + ")";
-            db_adapter::alter_column_type(new_it->first, col, alterations, Migrations);
-          }
           return;
         },
         [&](auto& init_field){
-          std::cerr<<"Conversions of from the defined type to BinaryField are not compatible."<<std::endl;
+          std::runtime_error(R"([ERROR: in 'handle_types.BinaryField lambda()'] => 
+                             Conversions of from the defined type to BinaryField are not compatible.)");
           //convert_to_BinaryField(col_obj, init_field)
           return;
         }
@@ -298,7 +267,8 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
           return;
         },
         [&](auto& init_field){
-          std::cerr<<"Conversions from your datatype to BoolField are not compatible."<<std::endl;
+          std::runtime_error(R"([ERROR: in 'handle_types.BoolField lambda()'] => 
+                             Conversions of from the defined type to BoolField are not compatible.)");
           //convert_to_BoolField(col_obj itself, and the init_field for conversion compatibility checks);
           return;
         }
@@ -308,9 +278,26 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
   std::visit(visitor, dtv_obj);
 }
 
-void Model::track_changes(const nlohmann::json& mrm, const nlohmann::json& frm){
+std::string find_uq_constraint(const nlohmann::json& frm, const std::string& new_model_name, const std::string& new_col){
+  std::string constraint_name;
+  auto outer_it = frm.find(new_model_name);
+  if(outer_it != frm.end()){
+    for(auto& [old_cn, new_cn] : outer_it.value().items()){
+      if(new_col == new_cn.get<std::string>()){
+        constraint_name = old_cn;
+      }else{
+        constraint_name = new_col;
+      }
+    }
+  }else{
+    constraint_name = new_col;
+  }
+  return constraint_name;
+}
 
-  std::ofstream Migrations ("migrations.sql");
+void Model::track_changes(const nlohmann::json& mrm, const nlohmann::json& frm, std::string& sql_filename){
+
+  std::ofstream Migrations (sql_filename);
 
   if(init_ms.empty()){
     for(auto& [model_name, field_map] : new_ms){
@@ -325,11 +312,10 @@ void Model::track_changes(const nlohmann::json& mrm, const nlohmann::json& frm){
   std::vector<std::string> pk_cols, uq_cols;
   std::string alterations, pk, fk;
 
-  for(auto& [init_model_name, init_col_map]:init_ms){
+  for(auto& [init_model_name, init_col_map] : init_ms){
     auto new_it = new_ms.find(init_model_name);
     if(new_it == new_ms.end()){
-      std::cerr<<"Something went wrong in the check for the new iterator"<<std::endl;
-      return;
+      throw std::runtime_error("[ERROR: in 'track_changes()'] => Error in check for new iterator with initial model name against new_ms.");
     }
     for(auto& [new_col, dtv_obj] : new_it->second){
       std::visit([&](auto& col_obj){
@@ -353,62 +339,32 @@ void Model::track_changes(const nlohmann::json& mrm, const nlohmann::json& frm){
               }
             }
 
-            if(init_field->unique != col_obj->unique){
-              if(col_obj->unique){
-                std::string constraint_name = "uq";
-                for(auto& [m_nms, col_map] : frm.items()){
-                  if(m_nms == new_it->first){
-                    for(auto& [old_cn, new_cn] : col_map.items()){
-                      if(new_col == new_cn.get<std::string>()){
-                        constraint_name = constraint_name + "_" + old_cn;
-                      }else{
-                        constraint_name = constraint_name + "_" + new_col;
-                      }
-                    }
-                  }else{
-                    constraint_name = constraint_name + "_" + new_col;
-                  }
-                }
-
-                if(frm.empty()){
-                  Migrations << "ALTER TABLE " + new_it->first + " ADD CONSTRAINT uq_" + new_col + " UNIQUE(" + new_col + ");\n";
-                }else{
-                  Migrations << "ALTER TABLE " + new_it->first + " ADD CONSTRAINT uq_" + new_col + " UNIQUE(" + new_col + ");\n";
-                }
-
+            if((init_field->unique != col_obj->unique) && col_obj->unique){
+              if(frm.empty()){
                 uq_cols.push_back(new_col);
               }else{
-                std::string constraint_name = "uq";
-                for(auto& [m_nms, col_map] : frm.items()){
-                  if(m_nms == new_it->first){
-                    for(auto& [old_cn, new_cn] : col_map.items()){
-                      if(new_col == new_cn.get<std::string>()){
-                        constraint_name = constraint_name + "_" + old_cn;
-                      }else{
-                        constraint_name = constraint_name + "_" + new_col;
-                      }
-                    }
-                  }else{
-                    constraint_name = constraint_name + "_" + new_col;
-                  }
-                }
-                if(frm.empty()){
-                  db_adapter::drop_constraint(new_it->first, "uq_"+new_col , Migrations);
-                }else{
-                  db_adapter::drop_constraint(new_it->first, constraint_name, Migrations);
-                }
+                uq_cols.push_back(find_uq_constraint(frm, new_it->first, new_col));
               }
+            }else if((init_field->unique != col_obj->unique) && !col_obj->unique){
+              if(frm.empty()){
+                db_adapter::drop_constraint(new_it->first, "uq_"+new_col , Migrations);
+              }else{
+                db_adapter::drop_constraint(new_it->first, "uq_"+find_uq_constraint(frm,new_it->first,new_col), Migrations);
+              }
+            }else {
+              return;
             }
           }
         }, init_col_map[std::string(new_col)]);
       }, dtv_obj);
 
       for(const std::string& uq_col : uq_cols){
-        Migrations<<"ALTER TABLE " + new_it->first + " ";
+        Migrations<<"ALTER TABLE " + new_it->first + " ADD ";
         db_adapter::create_uq_constraint(uq_col, Migrations);
       }
+      uq_cols.clear();
 
-      if(!mrm.empty()){
+      if(!mrm.empty() && !pk_cols.empty()){
         std::string pk_constraint = "pk_";
         for(auto& [old_mn, new_mn] : mrm.items()){
           if(new_mn.get<std::string>() == new_it->first){
@@ -418,31 +374,30 @@ void Model::track_changes(const nlohmann::json& mrm, const nlohmann::json& frm){
           }
         }
         db_adapter::drop_constraint(new_it->first, pk_constraint, Migrations);
-      }else{
+      }else if(mrm.empty() && !pk_cols.empty()){
         db_adapter::drop_constraint(new_it->first, "pk_" + new_it->first , Migrations);
+      }else{
+        continue;
       }
 
-      Migrations<<"ALTER TABLE " + new_it->first + " ";
-      db_adapter::create_pk_constraint(new_it->first, pk_cols, Migrations);
-      Migrations<<";\n";
-
-      return;
+      if(!pk_cols.empty()){
+        Migrations<<"ALTER TABLE " + new_it->first + " ADD ";
+        db_adapter::create_pk_constraint(new_it->first, pk_cols, Migrations);
+        Migrations<<";\n";
+      }
+      pk_cols.clear();
     }
   }
-
-  //ERROR undefined behaviour from this for loop. The init_it iterator somehow accesses the columns to other tables
-  //leading to undefined drops of these columns even though they are not to be be dropped...
 
   for(const auto& [new_model_name, new_col_map]:new_ms){
     const auto init_it = init_ms.find(new_model_name);
     if(init_it == init_ms.end()){
-      throw std::runtime_error("Something went wrong in the check for the init iterator.");
+      throw std::runtime_error(R"([ERROR: in 'track_changes()'] =>
+                                  Error in check for init iterator with new model name against the initial migrations.)");
     }
     for(auto& [old_col, dtv_obj] : init_it->second){
-      std::cout<<"Col in init_ms is: "<<old_col<<" in model: "<< init_it->first<<std::endl;
       if(new_col_map.find(old_col) == new_col_map.end()){
-        std::cout<<"Dropping col: "<<old_col<<std::endl;
-        db_adapter::drop_column(new_model_name, old_col, Migrations);
+        db_adapter::drop_column(init_it->first, old_col, Migrations);
       }
     }
   }

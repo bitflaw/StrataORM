@@ -2,7 +2,7 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
-#include "../orm++/db_engine_adapters.hpp"
+#include "../orm++/db_adapters.hpp"
 
 std::string str_to_upper(std::string& str){
   for(char& ch: str){
@@ -14,7 +14,7 @@ std::string str_to_upper(std::string& str){
 db_params parse_db_conn_params(){
   std::ifstream dbconfigfile ("config.json");
 
-  if(!dbconfigfile.is_open()) throw std::runtime_error("Could not load schema from file.");
+  if(!dbconfigfile.is_open()) throw std::runtime_error("[ERROR: in 'parse_db_conn_params()']Could not load db params from config.json.");
 
   nlohmann::json j;
   dbconfigfile >> j;
@@ -72,7 +72,7 @@ namespace psql{
       std::cout<<"Provide a default value for the column '" + column_name +"' to be set to non-nullable: " << std::endl;
       std::cin>> default_value;
       Migrations<< "UPDATE " + model_name + " SET " + column_name + " = " + default_value + " WHERE " + column_name
-                << " IS NULL; ALTER TABLE " + model_name + " ALTER COLUMN " + column_name + " SET NOT NULL;\n";
+                << " IS NULL;\n ALTER TABLE " + model_name + " ALTER COLUMN " + column_name + " SET NOT NULL;\n";
     }
   }
 
@@ -118,13 +118,20 @@ namespace psql{
 
   void generate_decimal_sql(DecimalField& dec_obj){
     dec_obj.datatype = str_to_upper(dec_obj.datatype);
-    if(dec_obj.datatype != "DECIMAL" && dec_obj.datatype != "REAL"&& 
-        dec_obj.datatype != "DOUBLE PRECISION" && dec_obj.datatype != "NUMERIC"){
+
+    if(dec_obj.datatype != "DECIMAL" && dec_obj.datatype != "REAL" &&
+       dec_obj.datatype != "DOUBLE PRECISION" && dec_obj.datatype != "NUMERIC"){
       std::cerr<< "Datatype" <<dec_obj.datatype<<"is not supported by postgreSQL. Provide a valid datatype"<<std::endl;
       return;
     }
+
+    if(dec_obj.datatype == "REAL" || dec_obj.datatype == "DOUBLE PRECISION"){
+      dec_obj.sql_segment = dec_obj.datatype;
+      return;
+    }
+
     if(dec_obj.max_length > 0 || dec_obj.decimal_places > 0)
-      dec_obj.sql_segment = dec_obj.datatype + "(" + std::to_string(dec_obj.max_length) 
+      dec_obj.sql_segment = dec_obj.datatype + "(" + std::to_string(dec_obj.max_length)
                             + "," + std::to_string(dec_obj.decimal_places) + ")";
     else
       std::cerr<<"Max length and/or decimal places cannot be 0 for datatype " << dec_obj.datatype <<std::endl;
@@ -140,11 +147,7 @@ namespace psql{
   }
 
   void generate_bin_sql(BinaryField& bin_obj){
-    if(bin_obj.size == 0){
-        std::cerr<< "Size cannot be zero for datatype "<<bin_obj.datatype<<std::endl;
-        return;
-      }
-    bin_obj.sql_segment = bin_obj.datatype + "(" + std::to_string(bin_obj.size) + ")";
+    bin_obj.sql_segment = bin_obj.datatype;
     if(bin_obj.not_null) bin_obj.sql_segment += " NOT NULL";
   }
 
@@ -158,7 +161,7 @@ namespace psql{
 
     std::string::size_type n = dt_obj.datatype.find('_');
     if(n != std::string::npos){
-      dt_obj.datatype.replace(n+1, n+3, "WITH TIMEZONE");
+      dt_obj.datatype.replace(n+1, n+3, "WITH TIME ZONE");
     }
 
 		dt_obj.sql_segment = dt_obj.datatype;
@@ -181,37 +184,64 @@ namespace psql{
 	  }
   }
 
-  void execute_sql(std::string& file_name){
-    std::ifstream sql_file(file_name);
+  void create_models_hpp(const ms_map& migrations){
+    std::ofstream models_hpp("models.hpp");
+    std::string cols_str;
 
+    models_hpp<<"#include <string>\n#include <vector>\n"
+              <<"#include <pqxx/row>\n\n";
+
+    if(migrations.empty()) std::cout<<"The migrations map at the fn create_model_hpp is empty"<<std::endl;
+
+    for(const auto& [model_name, col_map] : migrations){
+      models_hpp<< "class " + model_name + "{\npublic:\n";
+      cols_str = "";
+      for(const auto& [col_name, dtv_obj] : col_map){
+        cols_str += col_name + ",";
+        std::visit([&](auto& col_obj){
+          models_hpp<< "  " + col_obj->ctype + " " + col_name + ";\n";
+        }, dtv_obj);
+      }
+      cols_str.pop_back();
+      models_hpp<< "  std::vector<pqxx::row> records;\n"
+                << "  std::string col_str = \"" + cols_str + "\";\n\n"
+                << "  " + model_name + "() = default;\n"
+                << "  template <typename... Args>\n"
+                << "  " + model_name + "(Args&&... args){\n"
+                << "    std::tie(" + cols_str + ") = std::forward_as_tuple(std::forward<Args>(args)...);\n  }\n\n"
+                << "  auto get_attr() const{\n"
+                << "    return std::make_tuple(" + cols_str + ");\n  }\n};\n\n";
+    }
+  }
+
+
+  void execute_sql(std::string& sql_file_or_str, bool is_file_name = true){
     std::ostringstream raw_sql;
-    raw_sql << sql_file.rdbuf();
+
+    if(is_file_name){
+      std::ifstream sql_file(sql_file_or_str);
+      if(!sql_file.is_open()) throw std::runtime_error("[ERROR: in 'execute_sql()'] => Couldn't open the sql file to which the path is provided.");
+      raw_sql << sql_file.rdbuf();
+    }else{
+      raw_sql << sql_file_or_str;
+    }
 
     db_params params = parse_db_conn_params();
+
     try{
       pqxx::connection cxn("dbname=" + params.db_name+
-                            " user=" + params.user +
-                            " password=" + params.passwd +
-                            " host=" + params.host +
-                            " port=" + std::to_string(params.port)
-                            );
+                           " user=" + params.user +
+                           " password=" + params.passwd +
+                           " host=" + params.host +
+                           " port=" + std::to_string(params.port)
+                          );
       pqxx::work txn(cxn);
-
-      std::cout<<"If you would like to view the sql changes, view them in the " + file_name + " file in the file tree. DO NOT CLOSE THIS!\n"
-                <<"To continue, enter (y)es to execute the sql, else, enter (n)o to abort the sql execution. :"<<std::endl;
-
-      char choice = 'y';
-      std::cin >> choice;
-
-      if(choice == 'n'){
-        return;
-      }
 
       txn.exec0(raw_sql.str());
 
       txn.commit();
     }catch (const std::exception& e){
-      throw std::runtime_error(e.what());
+      throw std::runtime_error("[ERROR: in 'execute_sql()'] => Failed to execute sql.");
     }
     return;
   }
