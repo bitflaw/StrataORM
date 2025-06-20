@@ -1,6 +1,6 @@
 #include <stdexcept>
 #include <variant>
-#include "../orm++/db_adapters.hpp"
+#include "../strata/db_adapters.hpp"
 
 IntegerField::IntegerField(std::string datatype, bool pk, bool not_null, bool unique, int check_constr, std::string check_cond)
 :FieldAttr("int", datatype, not_null, unique, pk), check_constraint(check_constr), check_condition(check_cond)

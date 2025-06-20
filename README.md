@@ -1,5 +1,5 @@
->## Warning
+>[!Warning]
 >This library is still under ACTIVE development
 
-# orm
-A cpp orm for abstraction of db integration and  interaction
+# ORMPlusPlus
+An ORM built on C++20 that is built for postgresql but with support for integration of multiple database engines.
