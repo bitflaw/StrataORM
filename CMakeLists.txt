@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(StrataORM CXX)
+project(StrataORM VERSION 0.1.0 LANGUAGES CXX)
 
 #set CXX standard
 set(CMAKE_CXX_STANDARD 20)
@@ -30,6 +30,13 @@ if(BUILD_SHARED_LIBS)
 else()
   add_library(strata STATIC ${SRC})
 endif()
+
+#generate version.hpp from version.hpp.in in strata/
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/strata/version.hpp.in
+  ${CMAKE_CURRENT_SOURCE_DIR}/strata/version.hpp
+  @ONLY
+)
 
 #Public headers for consumers
 target_include_directories(strata

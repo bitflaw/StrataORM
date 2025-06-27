@@ -1,0 +1,27 @@
+[
+  {
+    "username": "barbie",
+    "email": "barbaradoe@hotmail.me",
+    "pin": 7890
+  },
+  {
+    "username": "berna",
+    "email": "bernarddoe@gmail.com",
+    "pin": 3456
+  },
+  {
+    "username": "peterdoe",
+    "email": "peterdoe@yahoo.com",
+    "pin": 9012
+  },
+  {
+    "username": "janedoe",
+    "email": "janedoe@gmail.com",
+    "pin": 5678
+  },
+  {
+    "username": "jamesdoe",
+    "email": "jamesdoe@gmail.com",
+    "pin": 1234
+  }
+]

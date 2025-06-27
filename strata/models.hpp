@@ -17,8 +17,8 @@ public:
 
   Model() = default;
 
-  void make_migrations(const nlohmann::json& mrm, const nlohmann::json& frm, std::string& sql_filename);
-  void track_changes(const nlohmann::json& mrm, const nlohmann::json& frm, std::string& sql_filename);
+  void make_migrations(const nlohmann::json& mrm, const nlohmann::json& frm, std::string sql_filename);
+  void track_changes(const nlohmann::json& mrm, const nlohmann::json& frm, std::string sql_filename);
 
   ~Model() = default;
 };

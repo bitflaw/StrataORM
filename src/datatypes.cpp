@@ -143,6 +143,7 @@ void from_json(const nlohmann::json& j, DateTimeField& field){
   field.default_val = j.at("default_value").get<std::string>();
   db_adapter::generate_datetime_sql(field);
 }
+
 ForeignKey::ForeignKey(std::string cn, std::string mn, std::string rcn, std::optional<FieldAttr> pk_col_obj, std::string on_del, std::string on_upd)
 :FieldAttr("null", "FOREIGN KEY", false, false, false),
 col_name(cn), model_name(mn), ref_col_name(rcn), on_delete(on_del), on_update(on_upd)

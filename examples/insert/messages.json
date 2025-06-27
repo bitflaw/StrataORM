@@ -1,0 +1,22 @@
+[
+  {
+    "sender": 3,
+    "receiver": 1,
+    "content": "This is a test message :}"
+  },
+  {
+    "sender": 4,
+    "receiver": 1,
+    "content": "This is another test message :)"
+  },
+  {
+    "sender": 1,
+    "receiver": 5,
+    "content": "This is yet another test message =)"
+  },
+  {
+    "sender": 5,
+    "receiver": 3,
+    "content": "Again, this is just a test message!"
+  }
+]

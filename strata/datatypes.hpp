@@ -24,7 +24,7 @@ public:
 
   IntegerField() = default;
 	IntegerField(std::string datatype, bool pk = false, bool not_null = false, bool unique = false,
-              int check_constr = 0, std::string check_cond = "default");
+              int check_constr = 0, std::string check_cond = "");
 
   ~IntegerField() = default;
 };
@@ -82,7 +82,7 @@ public:
 	std::string default_val;
 
   DateTimeField() = default;
-	DateTimeField(std::string datatype, bool enable_default = false, std::string default_val = "default", bool pk = false);
+	DateTimeField(std::string datatype, bool enable_default = false, std::string default_val = "", bool pk = false);
 
   ~DateTimeField() = default;
 };
@@ -95,7 +95,7 @@ public:
 
   ForeignKey() = default;
 	ForeignKey(std::string cn, std::string mn, std::string rcn, std::optional<FieldAttr> pk_col_obj=std::nullopt,
-             std::string on_del="def", std::string on_upd="def");
+             std::string on_del="CASCADE", std::string on_upd="CASCADE");
 
   ~ForeignKey() = default;
 };

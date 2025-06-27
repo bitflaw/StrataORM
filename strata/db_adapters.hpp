@@ -29,6 +29,10 @@ enum OP{
   CONTAINS
 };
 
+template<typename T, typename... Args>
+concept all_same_as_t = (std::convertible_to<T, Args> && ...);
+
+namespace Utils{
 using Value_T = std::variant<int, double, std::string>;
 inline std::string to_sql_literal(Value_T& value){
   return std::visit([](auto& v)-> std::string{
@@ -119,9 +123,6 @@ typedef struct{
 } db_params;
 db_params parse_db_conn_params();
 
-template<typename T, typename... Args>
-concept all_same_as_t = (std::convertible_to<T, Args> && ...);
-
 template <typename T, std::size_t N>
 struct CustomArray{
   std::array<T, N> wrapped_array {};
@@ -162,6 +163,7 @@ std::string to_str(const Arg& arg){
   ss<<arg;
   return ss.str();
 }
+}
 
 #ifdef PSQL
 
@@ -199,7 +201,7 @@ void create_table(const std::string& model_name, Col_Map& field_map, std::ofstre
   std::vector<std::string> primary_key_cols;
   std::vector<std::string> unique_constraint_cols;
 
-  Migrations<< "CREATE TABLE " + model_name + " (\n  " + model_name + "_id SERIAL NOT NULL,\n  ";
+  Migrations<< "CREATE TABLE IF NOT EXISTS " + model_name + " (\n  " + model_name + "_id SERIAL NOT NULL,\n  ";
 
   for(auto& [col, dtv_obj] : field_map){
     std::visit([&](auto& col_obj){
@@ -273,7 +275,7 @@ void generate_foreignkey_sql(ForeignKey& fk_obj);
 void create_models_hpp(const ms_map& migrations);
 
 inline pqxx::connection connect(){
-  db_params params = parse_db_conn_params();
+  Utils::db_params params = Utils::parse_db_conn_params();
   try{
     pqxx::connection cxn("dbname=" + params.db_name+
                          " user=" + params.user +
@@ -343,8 +345,8 @@ void get(Model_T& obj, Args... args){
 
   std::string sql_kwargs {};
   constexpr int N = sizeof...(args);
-  CustomArray<std::pair<std::string, std::string>, N/2> kwargs {};
-  CustomArray<std::string, N> parsed_args {to_str(args)...};
+  Utils::CustomArray<std::pair<std::string, std::string>, N/2> kwargs {};
+  Utils::CustomArray<std::string, N> parsed_args {to_str(args)...};
 
   for(int i = 0; i < N; i+=2){
     sql_kwargs += parsed_args[i] + "=" + parsed_args[i+1] + " and ";
@@ -377,9 +379,9 @@ void get(Model_T& obj, Args... args){
   }
 }
 
-inline bool matches_conditions(pqxx::field&& field, OP op, Value_T v){
+inline bool matches_conditions(pqxx::field&& field, OP op, Utils::Value_T v){
   bool accept = false;
-  std::any value = filter_val(v);
+  std::any value = Utils::filter_val(v);
   int int_cast = 0;
   double double_cast = 0;
   std::string str_cast {};
@@ -442,7 +444,7 @@ inline bool matches_conditions(pqxx::field&& field, OP op, Value_T v){
 }
 
 template <typename Model_T>
-void filter(Model_T& obj, std::string logical_op, filters& filters){
+void filter(Model_T& obj, std::string logical_op, Utils::filters& filters){
   if(obj.records.empty()){
     std::string sql_str = "select * from " + obj.table_name + " where " + build_filter_args(logical_op, filters) + ";";
     std::cout<<sql_str<<std::endl;
@@ -452,7 +454,7 @@ void filter(Model_T& obj, std::string logical_op, filters& filters){
     if (logical_op == "and"){
       for(const pqxx::row& row : obj.records){
         bool accept_row = true;
-        for(Condition& filter: filters){
+        for(Utils::Condition& filter: filters){
           if(!matches_conditions(row.at(filter.column), filter.op, filter.value)){
             accept_row = false;
             break;
@@ -466,7 +468,7 @@ void filter(Model_T& obj, std::string logical_op, filters& filters){
     }else if(logical_op == "or"){
       for(const pqxx::row& row : obj.records){
         bool accept_row = false;
-        for(Condition& filter: filters){
+        for(Utils::Condition& filter: filters){
           if(matches_conditions(row.at(filter.column), filter.op, filter.value)){
             accept_row = true;
             break;

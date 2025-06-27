@@ -61,7 +61,7 @@ ms_map load_schema_ms(){
   return parse_to_obj(j);
 }
 
-void Model::make_migrations(const nlohmann::json& mrm, const nlohmann::json& frm, std::string& sql_filename){
+void Model::make_migrations(const nlohmann::json& mrm, const nlohmann::json& frm, std::string sql_filename){
   for(const auto& pair : ModelFactory::registry()){
     new_ms[pair.first] = ModelFactory::create_model_instance(pair.first)->col_map;
   }
@@ -295,7 +295,7 @@ std::string find_uq_constraint(const nlohmann::json& frm, const std::string& new
   return constraint_name;
 }
 
-void Model::track_changes(const nlohmann::json& mrm, const nlohmann::json& frm, std::string& sql_filename){
+void Model::track_changes(const nlohmann::json& mrm, const nlohmann::json& frm, std::string sql_filename){
 
   std::ofstream Migrations (sql_filename);
 

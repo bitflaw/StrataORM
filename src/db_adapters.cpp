@@ -1,4 +1,5 @@
 #include <cctype>
+#include <ios>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -12,7 +13,7 @@ std::string str_to_upper(std::string& str){
   return str;
 }
 
-db_params parse_db_conn_params(){
+Utils::db_params Utils::parse_db_conn_params(){
   std::ifstream dbconfigfile ("config.json");
 
   if(!dbconfigfile.is_open()) throw std::runtime_error("[ERROR: in 'parse_db_conn_params()']Could not load db params from config.json.");
@@ -20,7 +21,7 @@ db_params parse_db_conn_params(){
   nlohmann::json j;
   dbconfigfile >> j;
 //NOTE intro a try catch here for more informative error handling
-  return db_params { j.at("db_name").get<std::string>(),
+  return Utils::db_params { j.at("db_name").get<std::string>(),
                      j.at("user").get<std::string>(),
                      j.at("passwd").get<std::string>(),
                      j.at("host").get<std::string>(),
@@ -65,13 +66,14 @@ void alter_column_nullable(const std::string& model_name, const std::string& col
     std::string default_value;
     std::cout<<"Provide a default value for the column '" + column_name +"' to be set to non-nullable: " << std::endl;
     std::cin>> default_value;
-    Migrations<< "UPDATE " + model_name + " SET " + column_name + " = " + default_value + " WHERE " + column_name
+    Migrations<< std::boolalpha
+      << "UPDATE " + model_name + " SET " + column_name + " = " + default_value + " WHERE " + column_name
       << " IS NULL;\n ALTER TABLE " + model_name + " ALTER COLUMN " + column_name + " SET NOT NULL;\n";
   }
 }
 
 void drop_table(const std::string& model_name, std::ofstream& Migrations){
-  Migrations << "DROP TABLE " + model_name + ";\n";
+  Migrations << "DROP TABLE IF EXISTS " + model_name + ";\n";
 }
 
 void drop_column(const std::string& model_name, const std::string& column_name,  std::ofstream& Migrations){
@@ -151,7 +153,7 @@ void generate_datetime_sql(DateTimeField& dt_obj){
   }
 
   dt_obj.sql_segment = dt_obj.datatype;
-  if(dt_obj.enable_default && dt_obj.default_val != "default"){
+  if(dt_obj.enable_default && !dt_obj.default_val.empty()){
     dt_obj.default_val = str_to_upper(dt_obj.default_val);
     dt_obj.sql_segment += " DEFAULT " + dt_obj.default_val;
   }
@@ -159,20 +161,15 @@ void generate_datetime_sql(DateTimeField& dt_obj){
 
 void generate_foreignkey_sql(ForeignKey& fk_obj){
   fk_obj.sql_segment ="FOREIGN KEY(" + fk_obj.col_name + ") REFERENCES " + fk_obj.model_name + " (" + fk_obj.ref_col_name + ")";
-
-  if(fk_obj.on_delete != "def"){
-    fk_obj.on_delete = str_to_upper(fk_obj.on_delete);
-    fk_obj.sql_segment += " ON DELETE " + fk_obj.on_delete;
-  }
-  if(fk_obj.on_update != "def" ){
-    fk_obj.on_update = str_to_upper(fk_obj.on_update);
-    fk_obj.sql_segment += " ON UPDATE " + fk_obj.on_update;
-  }
+  fk_obj.on_delete = str_to_upper(fk_obj.on_delete);
+  fk_obj.sql_segment += " ON DELETE " + fk_obj.on_delete;
+  fk_obj.on_update = str_to_upper(fk_obj.on_update);
+  fk_obj.sql_segment += " ON UPDATE " + fk_obj.on_update;
 }
 
 void create_models_hpp(const ms_map& migrations){
   std::ofstream models_hpp("models.hpp");
-  std::string cols_str;
+  std::string cols_str {};
 
   if(!migrations.empty())
     models_hpp<<"#include <string>\n#include <vector>\n"
@@ -194,9 +191,10 @@ void create_models_hpp(const ms_map& migrations){
       << "  " + model_name + "() = default;\n"
       << "  template <typename tuple_T>\n"
       << "  " + model_name + "(tuple_T tup){\n"
-      << "    std::tie(" + cols_str + ") = tup;\n  }\n\n"
+      << "    std::tie(id," + cols_str + ") = tup;\n  }\n\n"
       << "  auto get_attr() const{\n"
-      << "    return std::make_tuple(" + cols_str + ");\n  }\n};\n\n";
+      << "    return std::make_tuple(id," + cols_str + ");\n  }\n};\n\n";
+    cols_str.clear();
   }
 }
 
@@ -221,7 +219,7 @@ std::optional<pqxx::result> execute_sql(std::string& sql_file_or_str, bool is_fi
     raw_sql << sql_file_or_str;
   }
 
-  db_params params = parse_db_conn_params();
+  Utils::db_params params = Utils::parse_db_conn_params();
 
   try{
     pqxx::connection cxn("dbname=" + params.db_name+
