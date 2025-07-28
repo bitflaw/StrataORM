@@ -16,7 +16,7 @@ else()
 endif()
 
 #Generate db_config for db_engine
-file(WRITE "${CMAKE_SOURCE_DIR}/strata/db_config.hpp" "#pragma once\n${DB_MACRO}\n")
+file(WRITE "${CMAKE_SOURCE_DIR}/include/strata/db_config.hpp" "#pragma once\n${DB_MACRO}\n")
 
 #Collect src files
 file(GLOB SRC CONFIGURE_DEPENDS src/*.cpp)
