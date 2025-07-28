@@ -16,13 +16,12 @@ Documentation can be found at the [WIKI](https://github.com/bitflaw/strataorm/wi
 >This library is still under ACTIVE development and should not be considered stable!
 
 ## Features
-- [X] Create and Read operations for rows of data.
+- [X] CRUD operations for rows of data.
 - [X] Class-based models representing SQL tables.
 - [X] Migration tracking between changes in models and their columns.
 - [X] Support for raw SQL execution.
-- [X] Clean abstraction over raw SQL datatypes using classes.
+- [X] Clean abstraction over raw, basic SQL datatypes using classes.
 - [X] Support for performing fetches, filters(limited) and joins.
-- [ ] Updates and Delete operations for rows of values in tables.
 - [ ] Support for nullable values.
 - [ ] Support for more database engines eg MySQL, SQLite, MSSQL etc.
 
@@ -51,13 +50,13 @@ cd strataorm
 Since we are using CMake, I recommend building in a dedicated build directory:
 ```bash
 mkdir build
-cmake -B ${BUILD_DIR} -S . -DDB_ENGINE=PSQL -DBUILD_SHARED_LIBS=ON
+cmake -B ${BUILD_DIR} -S . -DDB_ENGINE=PSQL
 ```
 Now ```FLAGS``` specify what to build and how to build it, as follows:
-- ```-DBUILD_SHARED_LIBS=ON``` to build a shared library(.so or .dll)
-- ```-DBUILD_SHARED_LIBS=OFF``` to build an archive(.a)
 - ```-DDB_ENGINE=PSQL``` to specify the database you want to use the ORM with.
     This flag only takes ```PSQL``` for now since only postgres is supported for now.
+- Note that both static and dynamic libraries will be built for both use cases, avoiding rebuilding just to 
+use a desired one.
 
 ```bash
 cmake --build ${BUILD_DIR}
@@ -103,8 +102,6 @@ Examples can be found under the ```examples``` directory in the source tree.
 **Model usage example**
 ```cpp
 #include <memory>
-#include <optional>
-#include <pqxx/pqxx>
 #include <strata/models.hpp>
 #include <strata/db_adapters.hpp>
 
@@ -134,7 +131,7 @@ int main(){
 
   model.make_migrations(mrm, frm, sql_filename);
 
-  std::optional<pqxx::result> result = db_adapter::execute_sql(sql_filename);
+  opt_result_t result = db_adapter::execute_sql(sql_filename);
   return 0;
 }
 ```
@@ -170,7 +167,6 @@ int main(){
 
 **Queries Example**
 ```cpp
-#include <vector>
 #include <strata/db_adapters.hpp>
 #include "./include/models.hpp"
 

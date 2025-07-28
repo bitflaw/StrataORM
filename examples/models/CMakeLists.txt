@@ -15,4 +15,4 @@ target_link_libraries(models
     strata
 )
 
-target_compile_options(models PRIVATE -Wall -Wextra -pedantic)
+target_compile_options(models PRIVATE -Wall -Wextra -Wpedantic)

@@ -1,6 +1,4 @@
 #include <memory>
-#include <optional>
-#include <pqxx/pqxx>
 #include <strata/models.hpp>
 #include <strata/db_adapters.hpp>
 
@@ -30,7 +28,7 @@ int main(){
 
   model.make_migrations(mrm, frm, sql_filename);
 
-  std::optional<pqxx::result> result = db_adapter::execute_sql(sql_filename);
+  db_adapter::opt_result_t result = db_adapter::execute_sql(sql_filename);
 
   return 0;
 }

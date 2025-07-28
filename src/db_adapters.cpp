@@ -1,9 +1,4 @@
 #include <cctype>
-#include <ios>
-#include <iostream>
-#include <sstream>
-#include <stdexcept>
-#include <string>
 #include "../strata/db_adapters.hpp"
 
 std::string str_to_upper(std::string& str){
@@ -21,12 +16,13 @@ Utils::db_params Utils::parse_db_conn_params(){
   nlohmann::json j;
   dbconfigfile >> j;
 //NOTE intro a try catch here for more informative error handling
+  //Also, planning on introducing env variables to store db vars for more security and also ease of deploying
   return Utils::db_params { j.at("db_name").get<std::string>(),
-                     j.at("user").get<std::string>(),
-                     j.at("passwd").get<std::string>(),
-                     j.at("host").get<std::string>(),
-                     j.at("port").get<int>()
-                   };
+                            j.at("user").get<std::string>(),
+                            j.at("passwd").get<std::string>(),
+                            j.at("host").get<std::string>(),
+                            j.at("port").get<int>()
+                          };
 }
 
 namespace psql{
@@ -198,47 +194,4 @@ void create_models_hpp(const ms_map& migrations){
   }
 }
 
-void exec_insert(pqxx::connection& cxn, pqxx::params& row){
-  try{
-    pqxx::work txn(cxn);
-    pqxx::result result = txn.exec(pqxx::prepped{"insert_stmt"}, row).no_rows();
-    txn.commit();
-  }catch(const std::exception& e){
-    throw std::runtime_error(std::format("[ERROR: in 'exec_insert()'] => {}.", e.what()));
-  }
-}
-
-std::optional<pqxx::result> execute_sql(std::string& sql_file_or_str, bool is_file_name){
-  std::ostringstream raw_sql {};
-
-  if(is_file_name){
-    std::ifstream sql_file(sql_file_or_str);
-    if(!sql_file.is_open()) throw std::runtime_error("[ERROR: in 'execute_sql()'] => Couldn't open the sql file to which the path is provided.");
-    raw_sql << sql_file.rdbuf();
-  }else{
-    raw_sql << sql_file_or_str;
-  }
-
-  Utils::db_params params = Utils::parse_db_conn_params();
-
-  try{
-    pqxx::connection cxn("dbname=" + params.db_name+
-                         " user=" + params.user +
-                         " password=" + params.passwd +
-                         " host=" + params.host +
-                         " port=" + std::to_string(params.port)
-                         );
-    pqxx::work txn(cxn);
-
-    pqxx::result results = txn.exec(raw_sql.str());
-
-    txn.commit();
-
-    if(!results.empty()) return results;
-    return std::nullopt;
-  }catch (const std::exception& e){
-    throw std::runtime_error(std::format("[ERROR: in 'execute_sql()'] => Failed to execute sql. {}", e.what()));
-  }
-}
-
-}
+}//namespace psql

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 project(StrataORM VERSION 0.1.0 LANGUAGES CXX)
 
 #set CXX standard
@@ -7,7 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #Build options
 option(DB_ENGINE "Target database engine(only 'PSQL' supported now)" "PSQL")
-option(BUILD_SHARED_LIBS "Build a shared library" ON)
 
 #Database Engine Macro setup
 if(DB_ENGINE STREQUAL "PSQL")
@@ -24,37 +23,44 @@ file(GLOB SRC CONFIGURE_DEPENDS src/*.cpp)
 #include headers
 include_directories(strata)
 
-# BUILD SHARED OR STATIC
-if(BUILD_SHARED_LIBS)
-  add_library(strata SHARED ${SRC})
-else()
-  add_library(strata STATIC ${SRC})
-endif()
+#build both static and shared libraries.
+#Shared
+add_library(strata_shared SHARED ${SRC})
+set_target_properties(strata_shared PROPERTIES OUTPUT_NAME "strata")
+#Static
+add_library(strata_static STATIC ${SRC})
+set_target_properties(strata_static PROPERTIES OUTPUT_NAME "strata")
 
-#generate version.hpp from version.hpp.in in strata/
+#generate version.hpp from version.hpp.in in include/strata/
 configure_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/strata/version.hpp.in
-  ${CMAKE_CURRENT_SOURCE_DIR}/strata/version.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/strata/version.hpp.in
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/strata/version.hpp
   @ONLY
 )
 
-#Public headers for consumers
-target_include_directories(strata
+#Public headers for consumers for shared lib
+target_include_directories(strata_shared
   PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/strata>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/strata>
   $<INSTALL_INTERFACE:include>
 )
 
-#Install libs
-install(TARGETS strata
+#Public headers for consumers for static lib
+target_include_directories(strata_static
+  PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/strata>
+  $<INSTALL_INTERFACE:include>
+)
+
+#Install both targets
+install(TARGETS strata_shared strata_static
   EXPORT strata-targets
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin
 )
 
 #Install headers
-install(DIRECTORY strata
+install(DIRECTORY include/strata
   DESTINATION include
   FILES_MATCHING PATTERN "*.hpp"
 )

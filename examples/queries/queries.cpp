@@ -16,7 +16,7 @@ int main(){
   db_adapter::query::filter(user, "or", filters);*/
 
   int records_size = user.records.size();
-  std::vector<users> my_users = db_adapter::query::to_instances(user);
+  std::vector<users> my_users = db_adapter::to_instances(user);
 
   for (int i = 0; i < records_size; ++i) {
     std::cout<< my_users[i].id<<": "

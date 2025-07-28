@@ -21,4 +21,4 @@ target_link_libraries(inserts
     strata
 )
 
-target_compile_options(inserts PRIVATE -Wall -Wextra -pedantic)
+target_compile_options(inserts PRIVATE -Wall -Wextra -Wpedantic)

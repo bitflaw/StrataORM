@@ -1,14 +1,12 @@
 #pragma once
 #include <any>
+#include <cassert>
 #include <cstddef>
 #include <exception>
 #include <iostream>
-#include <optional>
 #include <stdexcept>
 #include <type_traits>
-#include <variant>
 #include <vector>
-#include <string>
 #include <fstream>
 #include <format>
 #include <concepts>
@@ -30,7 +28,10 @@ enum OP{
 };
 
 template<typename T, typename... Args>
-concept all_same_as_t = (std::convertible_to<T, Args> && ...);
+concept all_convertible_to_T = (std::convertible_to<Args, T> && ...);
+
+template<typename T, typename... Args>
+concept all_same_as_T = (std::same_as<T, Args> && ...);
 
 namespace Utils{
 using Value_T = std::variant<int, double, std::string>;
@@ -130,8 +131,8 @@ struct CustomArray{
 
   constexpr CustomArray() = default;
 
-  template<all_same_as_t<T>... Args>
-  requires (sizeof...(Args) <= N)
+  template<typename... Args>
+  requires (sizeof...(Args) <= N) && (all_convertible_to_T<std::string, Args...> || all_same_as_T<std::string, Args...>)
   constexpr CustomArray(Args&&... args): wrapped_array {static_cast<T>(args)...}, index(sizeof...(args)){}
 
   constexpr void push_back(T value){
@@ -157,8 +158,8 @@ struct CustomArray{
   constexpr std::size_t max_size() const { return N; }
 };
 
-template <typename Arg>
-std::string to_str(const Arg& arg){
+template <typename T>
+std::string to_str(T& arg){
   std::ostringstream ss;
   ss<<arg;
   return ss.str();
@@ -313,7 +314,7 @@ void dbfetch(Model_T& obj, std::string& sql_string, bool getfn_called = false){
 template<typename Model_T>
 pqxx::connection prepare_insert(){
   Model_T obj {};
-  pqxx::placeholders row_vals;
+  pqxx::placeholders row_vals {};
   pqxx::connection cxn = connect();
   std::string insert_statement = "insert into "+ obj.table_name + " (" + obj.col_str +") values(";
 
@@ -321,15 +322,52 @@ pqxx::connection prepare_insert(){
     insert_statement += row_vals.get() + ",";
     row_vals.next();
   }
-
-  insert_statement.pop_back();
-  insert_statement.append(");");
+  insert_statement.append("\b);");
   cxn.prepare("insert_stmt", insert_statement);
 
   return cxn;
 }
 
-void exec_insert(pqxx::connection& cxn, pqxx::params& p);
+inline void exec_insert(pqxx::connection& cxn, pqxx::params& row){
+  try{
+    pqxx::work txn(cxn);
+    pqxx::result result = txn.exec(pqxx::prepped{"insert_stmt"}, row).no_rows();
+    txn.commit();
+  }catch(const std::exception& e){
+    throw std::runtime_error(std::format("[ERROR: in 'exec_insert()'] => {}.", e.what()));
+  }
+}
+
+using opt_result_t = std::optional<pqxx::result>;
+inline opt_result_t execute_sql(std::string& sql_file_or_str, bool is_file_name = true){
+  std::ostringstream raw_sql {};
+
+  if(is_file_name){
+    std::ifstream sql_file(sql_file_or_str);
+    if(!sql_file.is_open()) throw std::runtime_error("[ERROR: in 'execute_sql()'] => Couldn't open the sql file to which the path is provided.");
+    raw_sql << sql_file.rdbuf();
+  }else{
+    raw_sql << sql_file_or_str;
+  }
+
+  Utils::db_params params = Utils::parse_db_conn_params();
+
+  try{
+    pqxx::connection cxn("dbname=" + params.db_name+
+                         " user=" + params.user +
+                         " password=" + params.passwd +
+                         " host=" + params.host +
+                         " port=" + std::to_string(params.port)
+                        );
+    pqxx::work txn(cxn);
+    pqxx::result results = txn.exec(raw_sql.str());
+    txn.commit();
+    if(!results.empty()) return results;
+    return std::nullopt;
+  }catch (const std::exception& e){
+    throw std::runtime_error(std::format("[ERROR: in 'execute_sql()'] => {}", e.what()));
+  }
+}
 
 namespace query{
 
@@ -346,7 +384,7 @@ void get(Model_T& obj, Args... args){
   std::string sql_kwargs {};
   constexpr int N = sizeof...(args);
   Utils::CustomArray<std::pair<std::string, std::string>, N/2> kwargs {};
-  Utils::CustomArray<std::string, N> parsed_args {to_str(args)...};
+  Utils::CustomArray<std::string, N> parsed_args {Utils::to_str(args)...};
 
   for(int i = 0; i < N; i+=2){
     sql_kwargs += parsed_args[i] + "=" + parsed_args[i+1] + " and ";
@@ -495,7 +533,8 @@ public:
   template<typename T>
   JoinBuilder(T& model): table_name(model.table_name) {}
 
-  template<all_same_as_t<std::string>... Args>
+  template <typename... Args>
+  requires all_same_as_T<std::string, Args...> || all_convertible_to_T<std::string, Args...>
   JoinBuilder& select(Args&&... columns){
     query_str = "select " + ((to_str(columns) + ",") + ...);
     query_str.pop_back();
@@ -539,7 +578,8 @@ public:
     return *this;
   }
 
-  template<all_same_as_t<std::string>... Args>
+  template<typename... Args>
+  requires all_same_as_T<std::string, Args...> || all_convertible_to_T<std::string, Args...>
   JoinBuilder& on(std::string logical_op, Args&&... conditions){
     if(join_pending)
       throw std::runtime_error("[ERROR: 'JoinBuilder.on()'] => Join pending");
@@ -568,20 +608,93 @@ public:
   }
 };
 
+}//namespace query
+
+template<typename Model_T>
+struct Update {
+  Model_T obj {};
+  std::string query {"update "+ obj.table_name + " set "};
+  pqxx::placeholders<int> row_vals {};
+  int count {row_vals.count()};
+  pqxx::params params {};
+  bool update_col_called = false;
+
+  template <typename... Args>
+  requires (sizeof...(Args) > 0) && (all_convertible_to_T<std::string, Args...> || all_same_as_T<std::string, Args...>)
+  Update& update_column(Args&&... args){
+    ((query += std::string{std::forward<Args>(args)} + "=" + row_vals.get() + ",", row_vals.next()), ...);
+    query.pop_back();
+    count = row_vals.count()-1;
+    update_col_called = true;
+    return *this;
+  }
+
+  template <typename... Args>
+  requires (sizeof...(Args) > 0) && (all_convertible_to_T<std::string, Args...> || all_same_as_T<std::string, Args...>)
+  Update& set_to(Args... args){
+    if(!update_col_called) throw std::logic_error(".column() must be called first to set the column to be updated!");
+    (params.append(Utils::to_str(args)), ...);
+    update_col_called = false;
+    return *this;
+  }
+
+  Update& where (std::string logical_op, Utils::filters& filters){
+    query.append(" where " + Utils::build_filter_args(logical_op, filters));
+    return *this;
+  }
+
+  void commit(){
+    query.append(";");
+    if(params.size() <= 0 || params.size() != count)
+      throw std::length_error("Unable to commit transaction, parameter values were empty");
+    try{
+      pqxx::connection cxn = connect();
+      cxn.prepare("update_stmt", query);
+      pqxx::work txn {cxn};
+      pqxx::result res = txn.exec(pqxx::prepped{"update_stmt"}, params).no_rows();
+      txn.commit();
+    }catch(const std::exception& e){
+      throw std::runtime_error(std::format("[ERROR: in psql::Update<T>::commit()] => {}", e.what()));
+    }
+  }
+};
+
+template <typename Model_T>
+void delete_row(std::string logical_op, Utils::filters& filters){
+  Model_T obj {};
+  std::string sql_str {"delete from " + obj.table_name + " where " + Utils::build_filter_args(logical_op, filters) + ";"};
+  opt_result_t result = execute_sql(sql_str, false);
+}
+
+//return a reference to a single instance of Model_T constructed from the pqxx::row passed as an argument.
+template <typename Model_T>
+Model_T to_instance(pqxx::row& row){
+  using tuple_T = decltype(std::declval<Model_T>().get_attr());
+  return Model_T(row.template as_tuple<tuple_T>());
+}
+
+//return a vector of Model_T instances constructed from pqxx::rows in obj.records.
 template <typename Model_T>
 std::vector<Model_T> to_instances(Model_T& obj){
   using tuple_T = decltype(obj.get_attr());
   std::vector<Model_T> instances {};
   instances.reserve(obj.records.size());
 
-  for(const pqxx::row& row : obj.records){
+  for(const pqxx::row& row : obj.records)
     instances.push_back(Model_T(row.template as_tuple<tuple_T>()));
-  }
   return instances;
 }
 
+//return a single tuple constructed from the passed in pqxx::row.
 template <typename Model_T>
-std::vector<decltype(std::declval<Model_T>().get_attr())> to_values(Model_T& obj){
+decltype(std::declval<Model_T>().get_attr()) to_tuple(pqxx::row& row){
+  using tuple_T = decltype(std::declval<Model_T>().get_attr());
+  return row.template as_tuple<tuple_T>();
+}
+
+//return multiple tuples constructed from obj.records which contains pqxx::rows
+template <typename Model_T>
+std::vector<decltype(std::declval<Model_T>().get_attr())> to_tuples(Model_T& obj){
   using tuple_T = decltype(obj.get_attr());
   std::vector<tuple_T> values {};
   values.reserve(obj.records.size());
@@ -589,14 +702,11 @@ std::vector<decltype(std::declval<Model_T>().get_attr())> to_values(Model_T& obj
   for(const pqxx::row& row : obj.records){
     values.push_back(row.template as_tuple<tuple_T>());
   }
-
   return values;
 }
-}
 
-std::optional<pqxx::result> execute_sql(std::string& sql_file_or_str, bool is_file_name = true);
 
-}
+}//namespace psql
 namespace db_adapter = psql;
 #else
 #error "No valid db_engine specified"
