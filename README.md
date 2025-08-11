@@ -22,7 +22,7 @@ Documentation can be found at the [WIKI](https://github.com/bitflaw/strataorm/wi
 - [X] Support for raw SQL execution.
 - [X] Clean abstraction over raw, basic SQL datatypes using classes.
 - [X] Support for performing fetches, filters(limited) and joins.
-- [X] Environmental variables instead of json configs for db parameters.
+- [X] Environmental variables set in-program for db connections.
 - [ ] Support for nullable values.
 - [ ] Support for user-defined datatypes.
 - [ ] Support for more database engines eg MySQL, SQLite, MSSQL etc.
@@ -35,43 +35,40 @@ Since this library supports only PostgreSQL now, dependencies are:
 - [libpqxx](https://github.com/jtv/libpqxx) -> Official C++ client library for postgres.
 
 
-
 >[!Warning]
 > This library depends on a feature from libpqxx that is only available on the latest development version(not released yet).
 > Options are to build from source or wait for the upcoming [```8.0```](https://github.com/jtv/libpqxx/pull/914) release.
 
 
-## Installation
+## Build & Installation
 
 ### Step 1: Clone the repository
 ```bash
-git clone git@github.com:bitflaw/strataorm.git
-cd strataorm
+$ git clone git@github.com:bitflaw/strataorm.git
+$ cd strataorm
 ```
 ### Step 2: Build the library
 Since we are using CMake, I recommend building in a dedicated build directory:
 ```bash
-mkdir build
-cmake -B ${BUILD_DIR} -S . -DDB_ENGINE=PSQL
+$ mkdir build
+$ cmake -B ${BUILD_DIR} -S . -DDB_ENGINE=PSQL
+$ cmake --build ${BUILD_DIR}
 ```
 
 - ```-DDB_ENGINE=PSQL``` to specify the database you want to use the ORM with.
   This flag only takes ```PSQL``` for now since only postgres is supported for now.
-- Note that both static and dynamic libraries will be built for both use cases, avoiding rebuilding just to 
+- Note that both static and dynamic libraries will be built for both use cases, avoiding rebuilding just to
 use a desired one.
 
-```bash
-cmake --build ${BUILD_DIR}
-```
 
 ### Step 3: Install to System
 To install to the default location specified by CMake, run:
 ```bash
-cmake --install ${BUILD_DIR}
+$ cmake --install ${BUILD_DIR}
 ```
 To install to a specified location, do:
 ```bash
-cmake --install ${BUILD_DIR} --prefix ${DESTINATION}
+$ cmake --install ${BUILD_DIR} --prefix ${DESTINATION}
 ```
 > [!NOTE]
 > You might need sudo/admin privileges to run this command.
@@ -82,21 +79,6 @@ If it's a CMake project, add this in your CMakeLists.txt file immediately after 
 add_subdirectory(strata)
 target_link_libraries(my_project PRIVATE strata)
 ```
-
->[!NOTE]
-> Database connection parameters should be provided at a `config.json` file which should be present at the directory where the executable is run.
->
-> The `config.json` has the following format:
-> ```json
-> {
->   "db_name": "",
->   "user": "",
->   "password": "",
->   "host": "",
->   "port": ""
-> }
-
-These are the parameters needed to connect to the database to perform operations.
 
 ## Examples
 Examples can be found under the ```examples``` directory in the source tree.
@@ -126,6 +108,15 @@ public:
 };REGISTER_MODEL(message);
 
 int main(){
+  Utils::dbenvars vars = {
+    {"DBUSER", ""},
+    {"DBPASS", ""},
+    {"DBNAME", ""},
+    {"DBHOST", ""},
+    {"DBPORT", ""}
+  };
+  Utils::set_dbenvars(vars);
+
   Model model {};
   nlohmann::json mrm {};
   nlohmann::json frm {};
@@ -146,6 +137,15 @@ This example uses a user-defined function ```.parse_json_rows()``` defined insid
 #include <strata/db_adapters.hpp>
 
 int main(){
+  Utils::dbenvars vars = {
+    {"DBUSER", ""},
+    {"DBPASS", ""},
+    {"DBNAME", ""},
+    {"DBHOST", ""},
+    {"DBPORT", ""}
+  };
+  Utils::set_dbenvars(vars);
+
   users user {};
   message m {};
 
@@ -173,6 +173,15 @@ int main(){
 #include "./include/models.hpp"
 
 int main(){
+  Utils::dbenvars vars = {
+    {"DBUSER", ""},
+    {"DBPASS", ""},
+    {"DBNAME", ""},
+    {"DBHOST", ""},
+    {"DBPORT", ""}
+  };
+  Utils::set_dbenvars(vars);
+
   users user {};
 
   db_adapter::query::fetch_all(user, "*");
@@ -196,6 +205,15 @@ int main(){
 #include "./include/models.hpp"
 
 int main(){
+  Utils::dbenvars vars = {
+    {"DBUSER", ""},
+    {"DBPASS", ""},
+    {"DBNAME", ""},
+    {"DBHOST", ""},
+    {"DBPORT", ""}
+  };
+  Utils::set_dbenvars(vars);
+
   users user {};
   db_adapter::query::JoinBuilder JB {user};
   pqxx::result result = JB.select("username, email")
