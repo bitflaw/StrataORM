@@ -1,28 +1,34 @@
 #include <cctype>
-#include "../strata/db_adapters.hpp"
+#include <cstdlib>
+#include "../include/strata/db_adapters.hpp"
 
-std::string str_to_upper(std::string& str){
+std::string Utils::str_to_upper(std::string& str){
   for(char& ch: str){
     ch = std::toupper(ch);
   }
   return str;
 }
 
-Utils::db_params Utils::parse_db_conn_params(){
-  std::ifstream dbconfigfile ("config.json");
+void Utils::set_dbenvars(Utils::dbenvars& params){
+  try{
+    for(auto kvparam: params) {
+      int retval = setenv(kvparam.first.data(), kvparam.second.data(), 1);
+      if (retval != 0) throw std::runtime_error("Failed to set environmental parameters! Unable to continue");
+    }
+  }catch(std::exception& e){
+    throw std::runtime_error(std::format("[ERROR: in 'set_dbenvars()'] => {}", e.what()));
+  }
+}
 
-  if(!dbconfigfile.is_open()) throw std::runtime_error("[ERROR: in 'parse_db_conn_params()']Could not load db params from config.json.");
-
-  nlohmann::json j;
-  dbconfigfile >> j;
-//NOTE intro a try catch here for more informative error handling
-  //Also, planning on introducing env variables to store db vars for more security and also ease of deploying
-  return Utils::db_params { j.at("db_name").get<std::string>(),
-                            j.at("user").get<std::string>(),
-                            j.at("passwd").get<std::string>(),
-                            j.at("host").get<std::string>(),
-                            j.at("port").get<int>()
-                          };
+Utils::db_params Utils::parse_dbenvars(){
+  Utils::db_params params {
+    getenv("DBNAME"),
+    getenv("DBUSER"),
+    getenv("DBPASS"),
+    getenv("DBHOST"),
+    std::stoi(getenv("DBPORT"))
+  };
+  return params;
 }
 
 namespace psql{
@@ -81,7 +87,7 @@ void drop_constraint(const std::string& model_name, const std::string& constrain
 }
 
 void generate_int_sql(IntegerField& int_obj){
-  int_obj.datatype = str_to_upper(int_obj.datatype);
+  int_obj.datatype = Utils::str_to_upper(int_obj.datatype);
   if(int_obj.datatype != "INTEGER" && int_obj.datatype != "SMALLINT" && int_obj.datatype != "BIGINT"){
     throw std::runtime_error(std::format("Datatype '{}' is not supported by postgreSQL. Provide a valid datatype", int_obj.datatype));
   }
@@ -90,7 +96,7 @@ void generate_int_sql(IntegerField& int_obj){
 }
 
 void generate_char_sql(CharField& char_obj){
-  char_obj.datatype = str_to_upper(char_obj.datatype);
+  char_obj.datatype = Utils::str_to_upper(char_obj.datatype);
   if(char_obj.datatype != "VARCHAR" && char_obj.datatype != "CHAR" && char_obj.datatype != "TEXT"){
     throw std::runtime_error(std::format("Datatype '{}' is not supported by postgreSQL. Provide a valid datatype", char_obj.datatype));
   }
@@ -98,12 +104,14 @@ void generate_char_sql(CharField& char_obj){
   if (char_obj.length == 0 && char_obj.datatype != "TEXT"){
     throw std::runtime_error(std::format("Length attribute is required for datatype '{}'", char_obj.datatype));
   }
-  char_obj.sql_segment += "(" + std::to_string(char_obj.length) + ")";
+  if (char_obj.datatype != "TEXT") {
+    char_obj.sql_segment += "(" + std::to_string(char_obj.length) + ")";
+  }
   if (char_obj.not_null) char_obj.sql_segment +=  " NOT NULL";
 }
 
 void generate_decimal_sql(DecimalField& dec_obj){
-  dec_obj.datatype = str_to_upper(dec_obj.datatype);
+  dec_obj.datatype = Utils::str_to_upper(dec_obj.datatype);
 
   if(dec_obj.datatype != "DECIMAL" && dec_obj.datatype != "REAL" &&
     dec_obj.datatype != "DOUBLE PRECISION" && dec_obj.datatype != "NUMERIC"){
@@ -136,7 +144,7 @@ void generate_bin_sql(BinaryField& bin_obj){
 }
 
 void generate_datetime_sql(DateTimeField& dt_obj){
-  dt_obj.datatype = str_to_upper(dt_obj.datatype);
+  dt_obj.datatype = Utils::str_to_upper(dt_obj.datatype);
   if(dt_obj.datatype != "DATE" && dt_obj.datatype != "TIME" && dt_obj.datatype != "TIMESTAMP_WTZ" &&
     dt_obj.datatype != "TIMESTAMP" && dt_obj.datatype != "TIME_WTZ"  && dt_obj.datatype != "INTERVAL"){
     throw std::runtime_error(std::format("Datatype '{}' not supported in postgreSQL. Provide a valid datatype", dt_obj.datatype));
@@ -150,16 +158,16 @@ void generate_datetime_sql(DateTimeField& dt_obj){
 
   dt_obj.sql_segment = dt_obj.datatype;
   if(dt_obj.enable_default && !dt_obj.default_val.empty()){
-    dt_obj.default_val = str_to_upper(dt_obj.default_val);
+    dt_obj.default_val = Utils::str_to_upper(dt_obj.default_val);
     dt_obj.sql_segment += " DEFAULT " + dt_obj.default_val;
   }
 }
 
 void generate_foreignkey_sql(ForeignKey& fk_obj){
   fk_obj.sql_segment ="FOREIGN KEY(" + fk_obj.col_name + ") REFERENCES " + fk_obj.model_name + " (" + fk_obj.ref_col_name + ")";
-  fk_obj.on_delete = str_to_upper(fk_obj.on_delete);
+  fk_obj.on_delete = Utils::str_to_upper(fk_obj.on_delete);
   fk_obj.sql_segment += " ON DELETE " + fk_obj.on_delete;
-  fk_obj.on_update = str_to_upper(fk_obj.on_update);
+  fk_obj.on_update = Utils::str_to_upper(fk_obj.on_update);
   fk_obj.sql_segment += " ON UPDATE " + fk_obj.on_update;
 }
 
@@ -168,8 +176,7 @@ void create_models_hpp(const ms_map& migrations){
   std::string cols_str {};
 
   if(!migrations.empty())
-    models_hpp<<"#include <string>\n#include <vector>\n"
-              <<"#include <pqxx/row>\n#include <tuple>\n\n";
+     models_hpp<<"#include <pqxx/row>\n\n";
 
   for(const auto& [model_name, col_map] : migrations){
     models_hpp<<"class " + model_name + "{\npublic:\n"

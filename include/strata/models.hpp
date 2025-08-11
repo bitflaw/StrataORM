@@ -1,9 +1,6 @@
 #pragma once
-
-#include <string>
 #include <unordered_map>
 #include <functional>
-#include <memory>
 #include "./datatypes.hpp"
 
 using fields = std::unordered_map<std::string, DataTypeVariant>;

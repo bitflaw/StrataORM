@@ -34,6 +34,9 @@ template<typename T, typename... Args>
 concept all_same_as_T = (std::same_as<T, Args> && ...);
 
 namespace Utils{
+
+std::string str_to_upper(std::string& str);
+
 using Value_T = std::variant<int, double, std::string>;
 inline std::string to_sql_literal(Value_T& value){
   return std::visit([](auto& v)-> std::string{
@@ -115,6 +118,9 @@ inline std::string build_filter_args(std::string logical_op, filters& filters){
   return where_str;
 }
 
+using dbenvars = std::vector<std::pair<std::string, std::string>>;
+void set_dbenvars(dbenvars&);
+
 typedef struct{
   std::string db_name;
   std::string user;
@@ -122,7 +128,7 @@ typedef struct{
   std::string host;
   int port;
 } db_params;
-db_params parse_db_conn_params();
+db_params parse_dbenvars();
 
 template <typename T, std::size_t N>
 struct CustomArray{
@@ -184,12 +190,14 @@ inline void create_pk_constraint(const std::string& model_name, const std::vecto
   Migrations<<pk_seg;
 }
 
-inline void create_fk_constraint(const std::string& model_name, const std::string& fk_sql_segment,
-                                 const std::string& column_name, std::ofstream& Migrations){
+inline void create_fk_constraint(const std::string& fk_sql_segment, const std::string& column_name,
+                                 std::ofstream& Migrations)
+{
   Migrations<< "CONSTRAINT fk_" + column_name + " " + fk_sql_segment;
 }
 
-inline void create_uq_constraint(const std::string& uq_col, std::ofstream& Migrations){
+inline void create_uq_constraint(const std::string& uq_col, std::ofstream& Migrations)
+{
   Migrations<<"CONSTRAINT uq_" + uq_col + " UNIQUE (" + uq_col + "),\n";
 }
 
@@ -210,7 +218,7 @@ void create_table(const std::string& model_name, Col_Map& field_map, std::ofstre
         Migrations << "  ";
         create_column(col, col_obj->sql_type, Migrations);
         Migrations << ",\n  ";
-        create_fk_constraint(model_name, col_obj->sql_segment, col, Migrations);
+        create_fk_constraint(col_obj->sql_segment, col, Migrations);
         Migrations << ",\n  ";
         return;
       }
@@ -276,7 +284,7 @@ void generate_foreignkey_sql(ForeignKey& fk_obj);
 void create_models_hpp(const ms_map& migrations);
 
 inline pqxx::connection connect(){
-  Utils::db_params params = Utils::parse_db_conn_params();
+  Utils::db_params params = Utils::parse_dbenvars();
   try{
     pqxx::connection cxn("dbname=" + params.db_name+
                          " user=" + params.user +
@@ -350,7 +358,7 @@ inline opt_result_t execute_sql(std::string& sql_file_or_str, bool is_file_name 
     raw_sql << sql_file_or_str;
   }
 
-  Utils::db_params params = Utils::parse_db_conn_params();
+  Utils::db_params params = Utils::parse_dbenvars();
 
   try{
     pqxx::connection cxn("dbname=" + params.db_name+

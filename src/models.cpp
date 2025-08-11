@@ -1,12 +1,5 @@
-#include <iostream>
-#include <memory>
-#include <stdexcept>
-#include <string>
-#include <variant>
-#include <vector>
-#include <fstream>
-#include "../strata/models.hpp"
-#include "../strata/db_adapters.hpp"
+#include "../include/strata/models.hpp"
+#include "../include/strata/db_adapters.hpp"
 
 template <typename... Ts>
 struct overloaded : Ts... { using Ts::operator()...; };
@@ -200,7 +193,7 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
       }
       db_adapter::drop_constraint(new_it->first, constraint_name, Migrations);
       Migrations<<"ALTER TABLE " + new_it->first + " ADD ";
-      db_adapter::create_fk_constraint(new_it->first, col_obj->sql_segment, col, Migrations);
+      db_adapter::create_fk_constraint(col_obj->sql_segment, col, Migrations);
       return;
     },
     [&](std::shared_ptr<DecimalField>& col_obj){

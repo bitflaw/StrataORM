@@ -21,6 +21,18 @@ public:
 };REGISTER_MODEL(message);
 
 int main(){
+  //can remove if u don't plan to apply the changes to the actual db.
+  //this is only relevant when there is a db in play.
+  Utils::dbenvars vars = {
+    {"DBUSER", ""},
+    {"DBPASS", ""},
+    {"DBNAME", ""},
+    {"DBHOST", ""},
+    {"DBPORT", ""}
+  };
+  Utils::set_dbenvars(vars);
+
+
   Model model {};
   nlohmann::json mrm {};
   nlohmann::json frm {};

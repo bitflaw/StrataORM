@@ -1,3 +1,4 @@
-build/
+build*/
 include/strata/version.hpp
 complogs.txt
+CHANGELOG.md

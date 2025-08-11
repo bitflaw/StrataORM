@@ -2,6 +2,15 @@
 #include "../include/models.hpp"
 
 int main(){
+  Utils::dbenvars vars = {
+    {"DBUSER", ""},
+    {"DBPASS", ""},
+    {"DBNAME", ""},
+    {"DBHOST", ""},
+    {"DBPORT", ""}
+  };
+  Utils::set_dbenvars(vars);
+
   users user {};
 
   db_adapter::Update<users> user_update {};

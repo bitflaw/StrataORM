@@ -22,7 +22,9 @@ Documentation can be found at the [WIKI](https://github.com/bitflaw/strataorm/wi
 - [X] Support for raw SQL execution.
 - [X] Clean abstraction over raw, basic SQL datatypes using classes.
 - [X] Support for performing fetches, filters(limited) and joins.
+- [X] Environmental variables instead of json configs for db parameters.
 - [ ] Support for nullable values.
+- [ ] Support for user-defined datatypes.
 - [ ] Support for more database engines eg MySQL, SQLite, MSSQL etc.
 
 ## Dependencies
@@ -52,9 +54,9 @@ Since we are using CMake, I recommend building in a dedicated build directory:
 mkdir build
 cmake -B ${BUILD_DIR} -S . -DDB_ENGINE=PSQL
 ```
-Now ```FLAGS``` specify what to build and how to build it, as follows:
+
 - ```-DDB_ENGINE=PSQL``` to specify the database you want to use the ORM with.
-    This flag only takes ```PSQL``` for now since only postgres is supported for now.
+  This flag only takes ```PSQL``` for now since only postgres is supported for now.
 - Note that both static and dynamic libraries will be built for both use cases, avoiding rebuilding just to 
 use a desired one.
 

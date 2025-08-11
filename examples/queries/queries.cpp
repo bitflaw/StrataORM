@@ -3,8 +3,21 @@
 #include "../include/models.hpp"
 
 int main(){
+  Utils::dbenvars vars = {
+    {"DBUSER", ""},
+    {"DBPASS", ""},
+    {"DBNAME", ""},
+    {"DBHOST", ""},
+    {"DBPORT", ""}
+  };
+  Utils::set_dbenvars(vars);
+
   users user {};
-  message m {};
+  //message m {};
+
+// ***************************************//
+      //uncomment as needed
+// **************************************//
 
   db_adapter::query::fetch_all(user, "*");
   //db_adapter::query::get(user, "username", "berna");
