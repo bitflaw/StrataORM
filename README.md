@@ -227,9 +227,6 @@ int main(){
 }
 ```
 
-> [!NOTE]
-> Tests have not been implemented yet but will be soon.
-
 **Updates Example**
 ```cpp
 #include <strata/db_adapters.hpp>
@@ -288,6 +285,9 @@ int main(){
   return 0;
 }
 ```
+
+> [!NOTE]
+> Tests have not been implemented yet but will be soon.
 
 ## Contributing
 All contributions are welcome. Please open an issue or submit a pull request for contributions to the library.
