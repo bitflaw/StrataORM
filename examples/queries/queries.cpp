@@ -4,11 +4,11 @@
 
 int main(){
   Utils::dbenvars vars = {
-    {"DBUSER", ""},
-    {"DBPASS", ""},
-    {"DBNAME", ""},
-    {"DBHOST", ""},
-    {"DBPORT", ""}
+    {"DBUSER", "root"},
+    {"DBPASS", "root"},
+    {"DBNAME", "testdb"},
+    {"DBHOST", "localhost"},
+    {"DBPORT", "5432"}
   };
   Utils::set_dbenvars(vars);
 

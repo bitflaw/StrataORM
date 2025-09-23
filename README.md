@@ -109,6 +109,7 @@ public:
 
 int main(){
   Utils::dbenvars vars = {
+    //insert your db credentials here
     {"DBUSER", ""},
     {"DBPASS", ""},
     {"DBNAME", ""},
@@ -229,6 +230,64 @@ int main(){
 > [!NOTE]
 > Tests have not been implemented yet but will be soon.
 
+**Updates Example**
+```cpp
+#include <strata/db_adapters.hpp>
+#include "../include/models.hpp"
+
+int main(){
+  Utils::dbenvars vars = {
+    {"DBUSER", ""},
+    {"DBPASS", ""},
+    {"DBNAME", ""},
+    {"DBHOST", ""},
+    {"DBPORT", ""}
+  };
+  Utils::set_dbenvars(vars);
+
+  users user {};
+
+  db_adapter::Update<users> user_update {};
+  Utils::filters filters = {
+    {"username", OP::EQ, "janedoe"}
+  };
+
+  user_update.update_column("username", "email")
+             .set_to("janny", "jannysimpleton@gmail.com")
+             .where("and", filters)
+             .commit();
+
+  db_adapter::query::get(user, "username", "'janny'");
+  return 0;
+}
+```
+
+**Delete Example**
+```cpp
+#include "../include/models.hpp"
+#include <strata/db_adapters.hpp>
+
+int main(){
+  Utils::dbenvars vars = {
+    {"DBUSER", ""},
+    {"DBPASS", ""},
+    {"DBNAME", ""},
+    {"DBHOST", ""},
+    {"DBPORT", ""}
+  };
+  Utils::set_dbenvars(vars);
+
+
+  users user {};
+
+  Utils::filters filters = {
+    {"users_id", OP::EQ, 3}
+  };
+  db_adapter::delete_row<users>("and", filters);
+
+  return 0;
+}
+```
 
 ## Contributing
 All contributions are welcome. Please open an issue or submit a pull request for contributions to the library.

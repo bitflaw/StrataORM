@@ -10,8 +10,12 @@ add_executable(query
 
 # Add include directories (e.g., your headers)
 target_include_directories(query
-    PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+  PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/../include
+)
+
+target_link_directories(query
+  PRIVATE
 )
 
 target_link_libraries(query
