@@ -1,1 +1,3 @@
-build/
+build*/
+include/strata/version.hpp
+complogs.txt

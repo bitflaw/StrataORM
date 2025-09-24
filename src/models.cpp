@@ -1,12 +1,8 @@
+#include "../include/strata/models.hpp"
+#include "../include/strata/db_adapters.hpp"
 #include <iostream>
-#include <memory>
-#include <stdexcept>
-#include <string>
-#include <variant>
-#include <vector>
-#include <fstream>
-#include "../strata/models.hpp"
-#include "../strata/db_adapters.hpp"
+#include <typeinfo>
+#include <cxxabi.h>
 
 template <typename... Ts>
 struct overloaded : Ts... { using Ts::operator()...; };
@@ -137,8 +133,20 @@ void create_or_drop_tables(ms_map& init_ms, ms_map& new_ms, std::ofstream& Migra
   }
 }
 
-void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVariant& dtv_obj, const nlohmann::json& mrm,
-                  const nlohmann::json& frm, DataTypeVariant& init_dtv, std::ofstream& Migrations){
+template <typename T>
+std::string type_name() {
+    const char* mangled = typeid(T).name();
+    int status = 0;
+    std::unique_ptr<char, void(*)(void*)> demangled(
+        abi::__cxa_demangle(mangled, nullptr, nullptr, &status),
+        std::free
+    );
+    return (status == 0) ? demangled.get() : mangled;
+}
+
+void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVariant& dtv_obj,
+                  const nlohmann::json& frm, DataTypeVariant& init_dtv, std::ofstream& Migrations)
+{
   std::string alterations;
 
   auto visitor = overloaded{
@@ -156,10 +164,11 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
           return;
         },
         [&](auto& init_field){
-          std::runtime_error(R"([ERROR: in 'handle_types.DateTimeField lambda()'] => 
-                             Conversions of from the defined type to DateTimeField are not compatible.)");
+          throw std::runtime_error(std::format(
+            "[ERROR: in 'handle_types.DateTimeField()'] => Conversions from {} to DateTimeField are not compatible.",
+            type_name<decltype(init_field)>()
+          ));
           //convert_to_DateTimeField(col_obj, init_field);
-          return;
         }
       }, init_dtv);
     },
@@ -176,8 +185,10 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
           return;
         },
         [&](auto& init_field){
-          std::runtime_error(R"([ERROR: in 'handle_types.IntegerField lambda()'] => 
-                             Conversions of from the defined type to IntegerField are not compatible.)");
+          throw std::runtime_error(std::format(
+            "[ERROR: in 'handle_types.IntegerField()'] => Conversions from {} to IntegerField are not compatible.",
+            type_name<decltype(init_field)>()
+          ));
           //convert_to_IntegerField(col_obj, init_field);
           return;
         }
@@ -200,7 +211,7 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
       }
       db_adapter::drop_constraint(new_it->first, constraint_name, Migrations);
       Migrations<<"ALTER TABLE " + new_it->first + " ADD ";
-      db_adapter::create_fk_constraint(new_it->first, col_obj->sql_segment, col, Migrations);
+      db_adapter::create_fk_constraint(col_obj->sql_segment, col, Migrations);
       return;
     },
     [&](std::shared_ptr<DecimalField>& col_obj){
@@ -216,10 +227,11 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
           return;
         },
         [&](auto& init_field){
-          std::runtime_error(R"([ERROR: in 'handle_types.DecimalField lambda()'] => 
-                             Conversions of from the defined type to DecimalField are not compatible.)");
+          throw std::runtime_error(std::format(
+            "[ERROR: in 'handle_types.DecimalField()'] => Conversions from {} to DecimalField are not compatible.)",
+            type_name<decltype(init_field)>()
+          ));
           //convert_to_DecField(col_obj, init_field, col, model_name);
-          return;
         }
       }, init_dtv);
     },
@@ -233,10 +245,11 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
           return;
         },
         [&](auto& init_field){
-          std::runtime_error(R"([ERROR: in 'handle_types.CharField lambda()'] => 
-                             Conversions of from the defined type to CharField are not compatible.)");
+          throw std::runtime_error(std::format(
+            "[ERROR: in 'handle_types.CharField()'] => Conversions from {} to CharField are not compatible.",
+            type_name<decltype(init_field)>()
+          ));
           //convert_to_CharField(col_obj, init_field);
-          return;
         }
       }, init_dtv);
     },
@@ -246,8 +259,10 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
           return;
         },
         [&](auto& init_field){
-          std::runtime_error(R"([ERROR: in 'handle_types.BinaryField lambda()'] => 
-                             Conversions of from the defined type to BinaryField are not compatible.)");
+          throw std::runtime_error(std::format(
+            "([ERROR: in 'handle_types.BinaryField()'] => Conversions from {} to BinaryField are not compatible.",
+            type_name<decltype(init_field)>()
+          ));
           //convert_to_BinaryField(col_obj, init_field)
           return;
         }
@@ -267,8 +282,10 @@ void handle_types(ms_map::iterator& new_it, const std::string col, DataTypeVaria
           return;
         },
         [&](auto& init_field){
-          std::runtime_error(R"([ERROR: in 'handle_types.BoolField lambda()'] => 
-                             Conversions of from the defined type to BoolField are not compatible.)");
+          throw std::runtime_error(std::format(
+            "([ERROR: in 'handle_types.BoolField()'] => Conversions from {} to BoolField are not compatible.",
+            type_name<decltype(init_field)>()
+          ));
           //convert_to_BoolField(col_obj itself, and the init_field for conversion compatibility checks);
           return;
         }
@@ -325,7 +342,7 @@ void Model::track_changes(const nlohmann::json& mrm, const nlohmann::json& frm, 
         }
         std::visit([&](auto& init_field){
           if(init_field->sql_segment != col_obj->sql_segment){
-            handle_types(new_it, new_col, dtv_obj, mrm, frm, init_col_map[new_col], Migrations);
+            handle_types(new_it, new_col, dtv_obj, frm, init_col_map[new_col], Migrations);
 
             if(col_obj->primary_key){
               pk_cols.push_back(new_col);

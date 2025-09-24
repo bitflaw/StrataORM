@@ -1,7 +1,5 @@
 #pragma once
-#include <memory>
 #include <optional>
-#include <string>
 #include <variant>
 #include "json.hpp"
 
@@ -11,7 +9,7 @@ public:
 	bool primary_key, not_null, unique;
 
 	FieldAttr(std::string ct = "null",std::string dt = "null", bool nn = false, bool uq = false, bool pk = false)
-	: ctype(ct), datatype(dt), not_null(nn), unique(uq), primary_key(pk)
+	: ctype(ct), datatype(dt), primary_key(pk), not_null(nn), unique(uq)
 	{}
 
   ~FieldAttr() = default;

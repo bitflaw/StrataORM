@@ -1,6 +1,4 @@
 #include <memory>
-#include <optional>
-#include <pqxx/pqxx>
 #include <strata/models.hpp>
 #include <strata/db_adapters.hpp>
 
@@ -23,6 +21,18 @@ public:
 };REGISTER_MODEL(message);
 
 int main(){
+  //can remove if u don't plan to apply the changes to the actual db.
+  //this is only relevant when there is a db in play.
+  Utils::dbenvars vars = {
+    {"DBUSER", ""},
+    {"DBPASS", ""},
+    {"DBNAME", ""},
+    {"DBHOST", ""},
+    {"DBPORT", ""}
+  };
+  Utils::set_dbenvars(vars);
+
+
   Model model {};
   nlohmann::json mrm {};
   nlohmann::json frm {};
@@ -30,7 +40,7 @@ int main(){
 
   model.make_migrations(mrm, frm, sql_filename);
 
-  std::optional<pqxx::result> result = db_adapter::execute_sql(sql_filename);
+  db_adapter::opt_result_t result = db_adapter::execute_sql(sql_filename);
 
   return 0;
 }

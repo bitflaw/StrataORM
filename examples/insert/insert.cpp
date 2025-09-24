@@ -2,6 +2,16 @@
 #include <strata/db_adapters.hpp>
 
 int main(){
+  Utils::dbenvars vars = {
+    {"DBUSER", ""},
+    {"DBPASS", ""},
+    {"DBNAME", ""},
+    {"DBHOST", ""},
+    {"DBPORT", ""}
+  };
+  Utils::set_dbenvars(vars);
+
+
   users user {};
   message m {};
 

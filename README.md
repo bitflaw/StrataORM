@@ -16,14 +16,15 @@ Documentation can be found at the [WIKI](https://github.com/bitflaw/strataorm/wi
 >This library is still under ACTIVE development and should not be considered stable!
 
 ## Features
-- [X] Create and Read operations for rows of data.
+- [X] CRUD operations for rows of data.
 - [X] Class-based models representing SQL tables.
 - [X] Migration tracking between changes in models and their columns.
 - [X] Support for raw SQL execution.
-- [X] Clean abstraction over raw SQL datatypes using classes.
+- [X] Clean abstraction over raw, basic SQL datatypes using classes.
 - [X] Support for performing fetches, filters(limited) and joins.
-- [ ] Updates and Delete operations for rows of values in tables.
+- [X] Environmental variables set in-program for db connections.
 - [ ] Support for nullable values.
+- [ ] Support for user-defined datatypes.
 - [ ] Support for more database engines eg MySQL, SQLite, MSSQL etc.
 
 ## Dependencies
@@ -34,43 +35,40 @@ Since this library supports only PostgreSQL now, dependencies are:
 - [libpqxx](https://github.com/jtv/libpqxx) -> Official C++ client library for postgres.
 
 
-
 >[!Warning]
 > This library depends on a feature from libpqxx that is only available on the latest development version(not released yet).
 > Options are to build from source or wait for the upcoming [```8.0```](https://github.com/jtv/libpqxx/pull/914) release.
 
 
-## Installation
+## Build & Installation
 
 ### Step 1: Clone the repository
 ```bash
-git clone git@github.com:bitflaw/strataorm.git
-cd strataorm
+$ git clone git@github.com:bitflaw/strataorm.git
+$ cd strataorm
 ```
 ### Step 2: Build the library
 Since we are using CMake, I recommend building in a dedicated build directory:
 ```bash
-mkdir build
-cmake -B ${BUILD_DIR} -S . -DDB_ENGINE=PSQL -DBUILD_SHARED_LIBS=ON
+$ mkdir build
+$ cmake -B ${BUILD_DIR} -S . -DDB_ENGINE=PSQL
+$ cmake --build ${BUILD_DIR}
 ```
-Now ```FLAGS``` specify what to build and how to build it, as follows:
-- ```-DBUILD_SHARED_LIBS=ON``` to build a shared library(.so or .dll)
-- ```-DBUILD_SHARED_LIBS=OFF``` to build an archive(.a)
-- ```-DDB_ENGINE=PSQL``` to specify the database you want to use the ORM with.
-    This flag only takes ```PSQL``` for now since only postgres is supported for now.
 
-```bash
-cmake --build ${BUILD_DIR}
-```
+- ```-DDB_ENGINE=PSQL``` to specify the database you want to use the ORM with.
+  This flag only takes ```PSQL``` for now since only postgres is supported for now.
+- Note that both static and dynamic libraries will be built for both use cases, avoiding rebuilding just to
+use a desired one.
+
 
 ### Step 3: Install to System
 To install to the default location specified by CMake, run:
 ```bash
-cmake --install ${BUILD_DIR}
+$ cmake --install ${BUILD_DIR}
 ```
 To install to a specified location, do:
 ```bash
-cmake --install ${BUILD_DIR} --prefix ${DESTINATION}
+$ cmake --install ${BUILD_DIR} --prefix ${DESTINATION}
 ```
 > [!NOTE]
 > You might need sudo/admin privileges to run this command.
@@ -82,29 +80,12 @@ add_subdirectory(strata)
 target_link_libraries(my_project PRIVATE strata)
 ```
 
->[!NOTE]
-> Database connection parameters should be provided at a `config.json` file which should be present at the directory where the executable is run.
->
-> The `config.json` has the following format:
-> ```json
-> {
->   "db_name": "",
->   "user": "",
->   "password": "",
->   "host": "",
->   "port": ""
-> }
-
-These are the parameters needed to connect to the database to perform operations.
-
 ## Examples
 Examples can be found under the ```examples``` directory in the source tree.
 
 **Model usage example**
 ```cpp
 #include <memory>
-#include <optional>
-#include <pqxx/pqxx>
 #include <strata/models.hpp>
 #include <strata/db_adapters.hpp>
 
@@ -127,6 +108,16 @@ public:
 };REGISTER_MODEL(message);
 
 int main(){
+  Utils::dbenvars vars = {
+    //insert your db credentials here
+    {"DBUSER", ""},
+    {"DBPASS", ""},
+    {"DBNAME", ""},
+    {"DBHOST", ""},
+    {"DBPORT", ""}
+  };
+  Utils::set_dbenvars(vars);
+
   Model model {};
   nlohmann::json mrm {};
   nlohmann::json frm {};
@@ -134,7 +125,7 @@ int main(){
 
   model.make_migrations(mrm, frm, sql_filename);
 
-  std::optional<pqxx::result> result = db_adapter::execute_sql(sql_filename);
+  db_adapter::opt_result_t result = db_adapter::execute_sql(sql_filename);
   return 0;
 }
 ```
@@ -147,6 +138,15 @@ This example uses a user-defined function ```.parse_json_rows()``` defined insid
 #include <strata/db_adapters.hpp>
 
 int main(){
+  Utils::dbenvars vars = {
+    {"DBUSER", ""},
+    {"DBPASS", ""},
+    {"DBNAME", ""},
+    {"DBHOST", ""},
+    {"DBPORT", ""}
+  };
+  Utils::set_dbenvars(vars);
+
   users user {};
   message m {};
 
@@ -170,11 +170,19 @@ int main(){
 
 **Queries Example**
 ```cpp
-#include <vector>
 #include <strata/db_adapters.hpp>
 #include "./include/models.hpp"
 
 int main(){
+  Utils::dbenvars vars = {
+    {"DBUSER", ""},
+    {"DBPASS", ""},
+    {"DBNAME", ""},
+    {"DBHOST", ""},
+    {"DBPORT", ""}
+  };
+  Utils::set_dbenvars(vars);
+
   users user {};
 
   db_adapter::query::fetch_all(user, "*");
@@ -198,6 +206,15 @@ int main(){
 #include "./include/models.hpp"
 
 int main(){
+  Utils::dbenvars vars = {
+    {"DBUSER", ""},
+    {"DBPASS", ""},
+    {"DBNAME", ""},
+    {"DBHOST", ""},
+    {"DBPORT", ""}
+  };
+  Utils::set_dbenvars(vars);
+
   users user {};
   db_adapter::query::JoinBuilder JB {user};
   pqxx::result result = JB.select("username, email")
@@ -210,9 +227,67 @@ int main(){
 }
 ```
 
+**Updates Example**
+```cpp
+#include <strata/db_adapters.hpp>
+#include "../include/models.hpp"
+
+int main(){
+  Utils::dbenvars vars = {
+    {"DBUSER", ""},
+    {"DBPASS", ""},
+    {"DBNAME", ""},
+    {"DBHOST", ""},
+    {"DBPORT", ""}
+  };
+  Utils::set_dbenvars(vars);
+
+  users user {};
+
+  db_adapter::Update<users> user_update {};
+  Utils::filters filters = {
+    {"username", OP::EQ, "janedoe"}
+  };
+
+  user_update.update_column("username", "email")
+             .set_to("janny", "jannysimpleton@gmail.com")
+             .where("and", filters)
+             .commit();
+
+  db_adapter::query::get(user, "username", "'janny'");
+  return 0;
+}
+```
+
+**Delete Example**
+```cpp
+#include "../include/models.hpp"
+#include <strata/db_adapters.hpp>
+
+int main(){
+  Utils::dbenvars vars = {
+    {"DBUSER", ""},
+    {"DBPASS", ""},
+    {"DBNAME", ""},
+    {"DBHOST", ""},
+    {"DBPORT", ""}
+  };
+  Utils::set_dbenvars(vars);
+
+
+  users user {};
+
+  Utils::filters filters = {
+    {"users_id", OP::EQ, 3}
+  };
+  db_adapter::delete_row<users>("and", filters);
+
+  return 0;
+}
+```
+
 > [!NOTE]
 > Tests have not been implemented yet but will be soon.
-
 
 ## Contributing
 All contributions are welcome. Please open an issue or submit a pull request for contributions to the library.
