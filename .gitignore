@@ -1,4 +1,4 @@
 build*/
 include/strata/version.hpp
 examples/
-#complogs.txt
+complogs.txt
