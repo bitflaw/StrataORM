@@ -82,6 +82,7 @@ install(DIRECTORY include/strata
   DESTINATION include
   FILES_MATCHING PATTERN "*.hpp"
   PATTERN "psql" EXCLUDE
+  PATTERN "mariadb" EXCLUDE
 )
 
 #Install database-specific headers
