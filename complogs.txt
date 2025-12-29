@@ -1,0 +1,180 @@
+In file included from /home/bitflaw/Workspace/projects/strata/src/datatypes.cpp:7:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::IntegerField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:72:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+   72 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+In file included from /home/bitflaw/Workspace/projects/strata/src/../include/strata/models.hpp:9,
+                 from /home/bitflaw/Workspace/projects/strata/src/models.cpp:1:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::IntegerField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:72:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+   72 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+In file included from /home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../models.hpp:9,
+                 from /home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/create_model_header.hpp:5,
+                 from /home/bitflaw/Workspace/projects/strata/src/mariadb/create_model_header.cpp:1:
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::IntegerField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp:72:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+   72 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::DecimalField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:144:63: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  144 |              std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                         ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::DecimalField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:144:63: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  144 |              std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                         ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::CharField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:219:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  219 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::CharField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:219:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  219 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::DecimalField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp:144:63: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  144 |              std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                         ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+In file included from /home/bitflaw/Workspace/projects/strata/src/../include/strata/models.hpp:9,
+                 from /home/bitflaw/Workspace/projects/strata/src/models.cpp:1:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::IntegerField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:72:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+   72 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::BoolField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:280:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  280 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::BoolField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:280:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  280 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::DecimalField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:144:63: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  144 |              std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                         ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::CharField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp:219:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  219 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::BinaryField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:355:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  355 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::CharField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:219:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  219 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::BoolField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp:280:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  280 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::BoolField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:280:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  280 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::DateTimeField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:422:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  422 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::BinaryField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:355:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  355 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::BinaryField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:355:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  355 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::ForeignKey::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:495:82: warning: unused parameter ‘old_col_obj’ [-Wunused-parameter]
+  495 |   void track (std::string new_model_name, const std::string col_name, FieldAttr& old_col_obj,
+      |                                                                       ~~~~~~~~~~~^~~~~~~~~~~
+In file included from /home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../models.hpp:9,
+                 from /home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/create_model_header.hpp:5,
+                 from /home/bitflaw/Workspace/projects/strata/src/mariadb/create_model_header.cpp:1:
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::IntegerField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp:72:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+   72 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::BinaryField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp:355:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  355 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::DateTimeField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:422:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  422 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+In file included from /home/bitflaw/Workspace/projects/strata/src/datatypes.cpp:7:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::IntegerField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:72:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+   72 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::DateTimeField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:422:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  422 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::DecimalField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp:144:63: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  144 |              std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                         ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::DateTimeField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp:422:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  422 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::CharField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp:219:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  219 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::BoolField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp:280:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  280 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::DecimalField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:144:63: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  144 |              std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                         ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::ForeignKey::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp:495:82: warning: unused parameter ‘old_col_obj’ [-Wunused-parameter]
+  495 |   void track (std::string new_model_name, const std::string col_name, FieldAttr& old_col_obj,
+      |                                                                       ~~~~~~~~~~~^~~~~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::ForeignKey::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:495:82: warning: unused parameter ‘old_col_obj’ [-Wunused-parameter]
+  495 |   void track (std::string new_model_name, const std::string col_name, FieldAttr& old_col_obj,
+      |                                                                       ~~~~~~~~~~~^~~~~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::CharField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:219:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  219 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::BinaryField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp:355:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  355 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::BoolField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:280:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  280 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::ForeignKey::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:495:82: warning: unused parameter ‘old_col_obj’ [-Wunused-parameter]
+  495 |   void track (std::string new_model_name, const std::string col_name, FieldAttr& old_col_obj,
+      |                                                                       ~~~~~~~~~~~^~~~~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::DateTimeField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp:422:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  422 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::BinaryField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:355:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  355 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::DateTimeField::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:422:64: warning: unused parameter ‘frm’ [-Wunused-parameter]
+  422 |               std::ofstream& Migrations, const nlohmann::json& frm = {}) const override
+      |                                          ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::ForeignKey::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/../include/strata/mariadb/datatypes.hpp:495:82: warning: unused parameter ‘old_col_obj’ [-Wunused-parameter]
+  495 |   void track (std::string new_model_name, const std::string col_name, FieldAttr& old_col_obj,
+      |                                                                       ~~~~~~~~~~~^~~~~~~~~~~
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp: In member function ‘virtual void mariadb::Field::ForeignKey::track(std::string, std::string, FieldAttr&, std::ofstream&, const nlohmann::json_abi_v3_11_3::json&) const’:
+/home/bitflaw/Workspace/projects/strata/src/mariadb/../../include/strata/mariadb/../mariadb/datatypes.hpp:495:82: warning: unused parameter ‘old_col_obj’ [-Wunused-parameter]
+  495 |   void track (std::string new_model_name, const std::string col_name, FieldAttr& old_col_obj,
+      |                                                                       ~~~~~~~~~~~^~~~~~~~~~~

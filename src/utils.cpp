@@ -1,4 +1,4 @@
-#include "../../include/strata/psql/utils.hpp"
+#include "../include/strata/utils.hpp"
 #include <exception>
 #include <format>
 #include <stdexcept>
@@ -34,8 +34,11 @@ db_params parse_dbenvars(){
     };
     return params;
   } catch (std::exception& e) {
-    throw std::runtime_error(std::format("[ERROR: In 'parse_db_envars()'] => {}", e.what()));
+    throw std::runtime_error(std::format(
+      "{} \n Check if you have set environmental variables using Utils::set_dbenvars()!",
+      e.what()
+    ));
   }
 }
 
-}
+} //INFO: Utils namespace

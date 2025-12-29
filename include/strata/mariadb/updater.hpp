@@ -1,28 +1,32 @@
 #pragma once
 #include "../db_config.hpp"
 
-#ifdef PSQL
+#ifdef MARIADB
+
 #include "../concepts.hpp"
 #include "connectors.hpp"
-#include <pqxx/row>
+#include <mdbcxx/transaction.hpp>
+#include <cstddef>
 
-namespace psql {
+
+namespace mariadb
+{
 
 template<typename Model_T>
-struct Update {
+struct Update
+{
   Model_T obj {};
   std::string query {"update "+ obj.table_name + " set "};
-  pqxx::placeholders<int> row_vals {};
-  int count {row_vals.count()};
-  pqxx::params params {};
+  std::size_t arg_count {0};
+  mcxx::params param_list {};
   bool update_col_called = false;
 
   template <typename... Args>
   requires (sizeof...(Args) > 0) && (all_convertible_to_T<std::string, Args...> || all_same_as_T<std::string, Args...>)
   Update& update_column(Args&&... args){
-    ((query += std::string{std::forward<Args>(args)} + "=" + row_vals.get() + ",", row_vals.next()), ...);
+    ((query += std::string{std::forward<Args>(args)} + "=?,"), ...);
     query.pop_back();
-    count = row_vals.count()-1;
+    arg_count += sizeof...(args);
     update_col_called = true;
     return *this;
   }
@@ -31,7 +35,7 @@ struct Update {
   requires (sizeof...(Args) > 0) && (all_convertible_to_T<std::string, Args...> || all_same_as_T<std::string, Args...>)
   Update& set_to(Args... args){
     if(!update_col_called) throw std::logic_error(".column() must be called first to set the column to be updated!");
-    (params.append(Utils::to_str(args)), ...);
+    (param_list.append(Utils::to_str(args)), ...);
     update_col_called = false;
     return *this;
   }
@@ -43,20 +47,24 @@ struct Update {
 
   void commit(){
     query.append(";");
-    if(params.size() <= 0 || params.size() != count)
-      throw std::length_error("Unable to commit transaction, parameter values were empty");
-    try{
-      pqxx::connection cxn = connect();
+    if(param_list.size() <= 0 || param_list.size() != arg_count)
+      throw std::length_error(
+        "Unable to commit transaction, number of parameter values doesn't match number of columns provided!"
+      );
+    try
+    {
+      mcxx::Connection cxn = connect();
       cxn.prepare("update_stmt", query);
-      pqxx::work txn {cxn};
-      pqxx::result res = txn.exec(pqxx::prepped{"update_stmt"}, params).no_rows();
-      txn.commit();
-    }catch(const std::exception& e){
-      throw std::runtime_error(std::format("[ERROR: in psql::Update<T>::commit()] => {}", e.what()));
+      mcxx::prepped_stmt prepped {cxn.prepped("update_stmt")};
+      mcxx::Transaction txn {cxn};
+      txn.exec0(prepped, param_list);
+    }catch(const std::exception& e)
+    {
+      throw std::runtime_error(e.what());
     }
   }
 };
 
 }
-namespace db = psql;
+namespace db = mariadb;
 #endif

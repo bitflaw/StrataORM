@@ -1,20 +1,23 @@
-#include "../../include/strata/psql/create_model_header.hpp"
+#include "../../include/strata/mariadb/create_model_header.hpp"
 #include <fstream>
 #include <memory>
 #include <type_traits>
 
-namespace psql {
+namespace mariadb
+{
 
-void create_models_hpp(const ms_map& migrations){
+void create_models_hpp(const ms_map& migrations)
+{
   std::ofstream models_hpp("models.hpp");
   std::string cols_str {};
 
   if(!migrations.empty())
-     models_hpp<<"#include <pqxx/row>\n\n";
+     models_hpp<<"#include <mdbcxx/row.hpp>\n\n";
 
-  for(const auto& [model_name, col_map] : migrations){
-    models_hpp<<"class " + model_name + "{\npublic:\n"
-              <<"  std::string table_name = \"" + model_name + "\";\n  int id;\n";
+  for(const auto& [model_name, col_map] : migrations)
+  {
+    models_hpp<<"class " + model_name + "\n{\npublic:\n"
+              <<"  std::string table_name = \"" + model_name + "\";\n  int id {};\n";
     for(const auto& [col_name, dtv_obj] : col_map){
       cols_str += col_name + ",";
       std::visit([&](auto& col_obj){
@@ -26,7 +29,7 @@ void create_models_hpp(const ms_map& migrations){
       }, dtv_obj);
     }
     cols_str.pop_back();
-    models_hpp<< "  std::vector<pqxx::row> records;\n"
+    models_hpp<< "  std::vector<mcxx::Row> records {};\n"
       << "  std::string col_str = \"" + cols_str + "\";\n"
       << "  int col_map_size = " + std::to_string(col_map.size()) + ";\n\n"
       << "  " + model_name + "() = default;\n"
@@ -39,4 +42,4 @@ void create_models_hpp(const ms_map& migrations){
   }
 }
 
-}// INFO: namespace psql
+}// INFO: namespace mariadb

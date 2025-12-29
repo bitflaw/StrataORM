@@ -1,11 +1,13 @@
 #include "../db_config.hpp"
 
-#ifdef PSQL
+#ifdef MARIADB
 
 #include "../models.hpp"
 
-namespace psql {
+namespace mariadb
+{
 void create_models_hpp(const ms_map& migrations);
 }
-namespace db = psql;
+namespace db = mariadb;
+
 #endif
