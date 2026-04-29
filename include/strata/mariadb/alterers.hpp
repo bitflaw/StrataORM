@@ -1,11 +1,12 @@
-#pragma once
 #include <strata/db_config.hpp>
 
-#ifdef PSQL
+#ifdef MARIADB
 #include <string>
 #include <fstream>
 
-namespace psql {
+namespace mariadb
+{
+
 void alter_rename_table(const std::string& old_model_name, const std::string& new_model_name, std::ofstream& Migrations);
 
 void alter_add_column(const std::string& model_name, const std::string& column_name,
@@ -22,6 +23,7 @@ void alter_column_defaultval(const std::string& model_name, const std::string& c
 
 void alter_column_nullable(const std::string& model_name, const std::string& column_name, const bool nullable, std::ofstream& Migrations);
 
-}
-namespace db = psql;
+} // INFO: namespace mariadb
+namespace db = mariadb;
+
 #endif

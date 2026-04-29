@@ -1,4 +1,4 @@
-#include "../../include/strata/psql/deleters.hpp"
+#include <strata/psql/deleters.hpp>
 
 namespace psql{
 
@@ -14,4 +14,4 @@ void drop_constraint(const std::string& model_name, const std::string& constrain
   Migrations<< "ALTER TABLE " + model_name + " DROP CONSTRAINT " + constraint_name + ";\n";
 }
 
-}
+}// INFO: namespace psql

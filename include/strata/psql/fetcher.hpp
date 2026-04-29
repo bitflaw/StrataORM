@@ -1,15 +1,16 @@
 #pragma once
-#include "../db_config.hpp"
-#include "connectors.hpp"
+#include <strata/db_config.hpp>
 
 #ifdef PSQL
+#include <strata/psql/connectors.hpp>
 #include <pqxx/row>
 #include <pqxx/transaction>
 
 namespace psql {
 
 template<typename Model_T>
-void dbfetch(Model_T& obj, std::string& sql_string, bool getfn_called = false){
+void dbfetch(Model_T& obj, std::string& sql_string, bool getfn_called = false)
+{
   pqxx::connection cxn= connect();
   try{
     pqxx::work txn(cxn);
@@ -30,5 +31,5 @@ void dbfetch(Model_T& obj, std::string& sql_string, bool getfn_called = false){
 }
 
 }
-namespace db_adapter = psql;
+namespace db = psql;
 #endif

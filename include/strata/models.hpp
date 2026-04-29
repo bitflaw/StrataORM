@@ -1,12 +1,22 @@
 #pragma once
 #include <unordered_map>
 #include <functional>
-#include "./datatypes.hpp"
+#include <strata/db_config.hpp>
 
-using fields = std::unordered_map<std::string, DataTypeVariant>;
+#ifdef PSQL
+#include <strata/psql/datatypes.hpp>
+#elif defined(MARIADB)
+#include <strata/mariadb/datatypes.hpp>
+#else
+#error "No database adapter specified"
+#endif
+
+
+using fields = std::unordered_map<std::string, db::DataTypeVariant>;
 using ms_map = std::unordered_map<std::string, fields>;
 
-class Model{
+class Model
+{
 public:
   fields col_map;
   ms_map init_ms;
@@ -20,19 +30,23 @@ public:
   ~Model() = default;
 };
 
-class ModelFactory{
+class ModelFactory
+{
 public:
   using Creator = std::function<std::unique_ptr<Model>()>;
 
-  static std::unordered_map<std::string, Creator>& registry(){
+  static std::unordered_map<std::string, Creator>& registry()
+  {
     static std::unordered_map<std::string, Creator> registry_map;
     return registry_map;
   }
 
-  static void register_model(const std::string& model_name, Creator creator){
+  static void register_model(const std::string& model_name, Creator creator)
+  {
     registry()[model_name] = std::move(creator);
   }
-  static std::unique_ptr<Model> create_model_instance(const std::string& model_name){
+  static std::unique_ptr<Model> create_model_instance(const std::string& model_name)
+  {
     auto it = registry().find(model_name);
     if(it != registry().end()){
       return it->second();

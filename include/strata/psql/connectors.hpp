@@ -1,11 +1,12 @@
 #pragma once
-#include "../db_config.hpp"
-#include "utils.hpp"
-#include <format>
+#include <strata/db_config.hpp>
 
 #ifdef PSQL
-#include <pqxx/row>
-#include <pqxx/transaction>
+
+#include <strata/utils.hpp>
+#include <format>
+#include <pqxx/connection>
+
 namespace psql {
 
 inline pqxx::connection connect(){
@@ -24,5 +25,5 @@ inline pqxx::connection connect(){
 }
 
 }
-namespace db_adapter = psql;
+namespace db = psql;
 #endif

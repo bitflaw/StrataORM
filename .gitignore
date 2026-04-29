@@ -1,3 +1,7 @@
 build*/
 include/strata/version.hpp
+examples/
 complogs.txt
+include/strata/db_config.hpp
+.direnv
+.cache

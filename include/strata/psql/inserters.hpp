@@ -1,14 +1,15 @@
 #pragma once
-#include "../db_config.hpp"
-#include "connectors.hpp"
+#include <strata/db_config.hpp>
 
 #ifdef PSQL
+#include <strata/psql/connectors.hpp>
 #include <pqxx/row>
 
 namespace psql {
 
 template<typename Model_T>
-pqxx::connection prepare_insert(){
+pqxx::connection prepare_insert()
+{
   Model_T obj {};
   pqxx::placeholders row_vals {};
   pqxx::connection cxn = connect();
@@ -24,7 +25,8 @@ pqxx::connection prepare_insert(){
   return cxn;
 }
 
-inline void exec_insert(pqxx::connection& cxn, pqxx::params& row){
+inline void exec_insert(pqxx::connection& cxn, pqxx::params& row)
+{
   try{
     pqxx::work txn(cxn);
     pqxx::result result = txn.exec(pqxx::prepped{"insert_stmt"}, row).no_rows();
@@ -35,5 +37,5 @@ inline void exec_insert(pqxx::connection& cxn, pqxx::params& row){
 }
 
 }
-namespace db_adapter = psql;
+namespace db = psql;
 #endif

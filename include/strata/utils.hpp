@@ -1,11 +1,11 @@
 #pragma once
-#include <string>
 #include <vector>
 #include <any>
 #include <variant>
 #include <sstream>
 
-enum OP{
+enum OP
+{
   EQ=1,
   GT,
   LT,
@@ -18,19 +18,22 @@ enum OP{
   CONTAINS
 };
 
-namespace Utils{
+namespace Utils
+{
 
 std::string str_to_upper(std::string& str);
 
 using Value_T = std::variant<int, double, std::string>;
-inline std::string to_sql_literal(Value_T& value){
+inline std::string to_sql_literal(Value_T& value)
+{
   return std::visit([](auto& v)-> std::string{
     if constexpr(std::is_same_v<std::decay_t<decltype(v)>, std::string>) return "'" + v + "'";
     else return std::to_string(v);
   }, value);
 }
 
-inline std::string op_to_str(OP op, Value_T v){
+inline std::string op_to_str(OP op, Value_T v)
+{
   std::string str, value;
   switch (op) {
     case EQ:
@@ -76,13 +79,15 @@ inline std::string op_to_str(OP op, Value_T v){
   return str;
 }
 
-inline std::any filter_val(Value_T& val){
+inline std::any filter_val(Value_T& val)
+{
   return std::visit([](auto& v)->std::any{
     return std::any{v};
   }, val);
 }
 
-struct Condition {
+struct Condition
+{
   std::string column;
   OP op;
   Value_T value;
@@ -92,7 +97,8 @@ struct Condition {
 };
 using filters = std::vector<Condition>;
 
-inline std::string build_filter_args(std::string logical_op, filters& filters){
+inline std::string build_filter_args(std::string logical_op, filters& filters)
+{
   int op_size = logical_op.size();
   std::string where_str {};
   for(Condition& filter: filters){
@@ -106,7 +112,8 @@ inline std::string build_filter_args(std::string logical_op, filters& filters){
 using dbenvars = std::vector<std::pair<std::string, std::string>>;
 void set_dbenvars(dbenvars&);
 
-typedef struct{
+typedef struct
+{
   std::string db_name;
   std::string user;
   std::string passwd;
@@ -116,7 +123,8 @@ typedef struct{
 db_params parse_dbenvars();
 
 template <typename T>
-std::string to_str(T& arg){
+std::string to_str(T& arg)
+{
   std::ostringstream ss;
   ss<<arg;
   return ss.str();
