@@ -1,4 +1,4 @@
-#include "../../include/strata/psql/create_model_header.hpp"
+#include <strata/psql/create_model_header.hpp>
 #include <fstream>
 #include <memory>
 #include <type_traits>

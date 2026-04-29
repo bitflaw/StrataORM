@@ -1,4 +1,4 @@
-#include "../db_config.hpp"
+#include <strata/db_config.hpp>
 
 #ifdef MARIADB
 #include <string>

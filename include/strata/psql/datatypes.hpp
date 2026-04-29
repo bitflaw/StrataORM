@@ -1,5 +1,5 @@
 #pragma once
-#include "../db_config.hpp"
+#include <strata/db_config.hpp>
 
 #ifdef PSQL
 
@@ -8,12 +8,12 @@
 #include <memory>
 #include <variant>
 #include <format>
-#include "../json.hpp"
-#include "../field_base.hpp"
-#include "../utils.hpp"
-#include "alterers.hpp"
-#include "create_constraints.hpp"
-#include "deleters.hpp"
+#include <strata/json.hpp>
+#include <strata/field_base.hpp>
+#include <strata/utils.hpp>
+#include <strata/psql/alterers.hpp>
+#include <strata/psql/create_constraints.hpp>
+#include <strata/psql/deleters.hpp>
 
 namespace psql::Field {
 

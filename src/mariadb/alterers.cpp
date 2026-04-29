@@ -1,4 +1,4 @@
-#include "../../include/strata/mariadb/alterers.hpp"
+#include <strata/mariadb/alterers.hpp>
 #include <iostream>
 
 namespace mariadb {

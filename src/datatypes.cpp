@@ -1,4 +1,4 @@
-#include "../include/strata/db_config.hpp"
+#include <strata/db_config.hpp>
 #include <type_traits>
 
 #ifdef PSQL

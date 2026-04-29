@@ -1,5 +1,5 @@
-#include "../include/strata/models.hpp"
-#include "../include/strata/db_adapters.hpp"
+#include <strata/models.hpp>
+#include <strata/db_adapters.hpp>
 #include <iostream>
 
 template <typename... Ts>

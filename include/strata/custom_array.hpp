@@ -2,7 +2,7 @@
 #include <array>
 #include <stdexcept>
 #include <string>
-#include "concepts.hpp"
+#include <strata/concepts.hpp>
 
 namespace Utils {
 

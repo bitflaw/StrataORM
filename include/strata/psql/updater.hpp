@@ -1,9 +1,9 @@
 #pragma once
-#include "../db_config.hpp"
+#include <strata/db_config.hpp>
 
 #ifdef PSQL
-#include "../concepts.hpp"
-#include "connectors.hpp"
+#include <strata/concepts.hpp>
+#include <strata/psql/connectors.hpp>
 #include <pqxx/row>
 
 namespace psql {

@@ -1,8 +1,9 @@
-#include "../db_config.hpp"
+# pragma once
+#include <strata/db_config.hpp>
 
 #ifdef PSQL
 
-#include "../models.hpp"
+#include <strata/models.hpp>
 
 namespace psql {
 void create_models_hpp(const ms_map& migrations);

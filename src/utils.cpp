@@ -1,4 +1,4 @@
-#include "../include/strata/utils.hpp"
+#include <strata/utils.hpp>
 #include <exception>
 #include <format>
 #include <stdexcept>

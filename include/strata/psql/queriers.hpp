@@ -1,9 +1,9 @@
 #pragma once
-#include "../db_config.hpp"
+#include <strata/db_config.hpp>
 
 #ifdef PSQL
-#include "../custom_array.hpp"
-#include "connectors.hpp"
+#include <strata/custom_array.hpp>
+#include <strata/psql/connectors.hpp>
 #include <pqxx/row>
 #include <pqxx/transaction>
 

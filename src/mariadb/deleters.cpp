@@ -1,4 +1,4 @@
-#include "../../include/strata/mariadb/deleters.hpp"
+#include <strata/mariadb/deleters.hpp>
 
 namespace mariadb {
 

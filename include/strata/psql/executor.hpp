@@ -1,9 +1,9 @@
 #pragma once
-#include "../db_config.hpp"
+#include <strata/db_config.hpp>
 
 #ifdef PSQL
 
-#include "connectors.hpp"
+#include <strata/psql/connectors.hpp>
 #include <fstream>
 #include <pqxx/transaction>
 #include <pqxx/result>

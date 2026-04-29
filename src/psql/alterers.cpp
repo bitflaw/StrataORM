@@ -1,4 +1,4 @@
-#include "../../include/strata/psql/alterers.hpp"
+#include <strata/psql/alterers.hpp>
 #include <iostream>
 #include <fstream>
 

@@ -1,11 +1,11 @@
 #pragma once
-#include "../db_config.hpp"
+#include <strata/db_config.hpp>
 
 #ifdef MARIADB
 
 #include <exception>
 #include <mdbcxx/connection.hpp>
-#include "../utils.hpp"
+#include <strata/utils.hpp>
 
 namespace mariadb
 {

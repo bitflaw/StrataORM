@@ -1,8 +1,8 @@
-#include "../db_config.hpp"
+#include <strata/db_config.hpp>
 
 #ifdef MARIADB
 
-#include "../models.hpp"
+#include <strata/models.hpp>
 
 namespace mariadb
 {

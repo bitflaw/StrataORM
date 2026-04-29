@@ -1,9 +1,9 @@
-#include "../db_config.hpp"
+#include <strata/db_config.hpp>
 
 #ifdef MARIADB
 
-#include "create_constraints.hpp"
-#include "datatypes.hpp"
+#include <strata/mariadb/create_constraints.hpp"
+#include <strata/mariadb/datatypes.hpp"
 
 namespace mariadb {
 

@@ -1,10 +1,10 @@
 #pragma once
-#include "../db_config.hpp"
+#include <strata/db_config.hpp>
 
 #ifdef MARIADB
 
-#include "../concepts.hpp"
-#include "connectors.hpp"
+#include <strata/concepts.hpp>
+#include <strata/mariadb/connectors.hpp>
 #include <mdbcxx/transaction.hpp>
 #include <cstddef>
 

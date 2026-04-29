@@ -1,4 +1,4 @@
-#include "../../include/strata/mariadb/create_model_header.hpp"
+#include <strata/mariadb/create_model_header.hpp>
 #include <fstream>
 #include <memory>
 #include <type_traits>

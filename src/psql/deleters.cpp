@@ -1,4 +1,4 @@
-#include "../../include/strata/psql/deleters.hpp"
+#include <strata/psql/deleters.hpp>
 
 namespace psql{
 

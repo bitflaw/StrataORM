@@ -1,9 +1,9 @@
 #pragma once
-#include "../db_config.hpp"
+#include <strata/db_config.hpp>
 
 #ifdef MARIADB
-#include "../custom_array.hpp"
-#include "connectors.hpp"
+#include <strata/custom_array.hpp>
+#include <strata/mariadb/connectors.hpp>
 #include <format>
 #include <mdbcxx/row.hpp>
 #include <mdbcxx/transaction.hpp>

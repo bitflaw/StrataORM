@@ -1,4 +1,4 @@
-#include "json.hpp"
+#include <strata/json.hpp>
 #include <string>
 
 class FieldAttr {

@@ -1,9 +1,10 @@
-#include "../db_config.hpp"
+#pragma once 
+#include <strata/db_config.hpp>
 
 #ifdef PSQL
 
-#include "create_constraints.hpp"
-#include "datatypes.hpp"
+#include <strata/psql/create_constraints.hpp>
+#include <strata/psql/datatypes.hpp>
 
 namespace psql {
 
